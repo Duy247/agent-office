@@ -2,7 +2,7 @@
 // This file is never bundled or served by the dashboard.
 const mode = new URL(location.href).searchParams.get('fixture');
 if (mode) {
-  const kinds = ['working', 'question', 'approval', 'takeover', 'failed', 'queued'];
+  const kinds = ['working', 'question', 'approval', 'takeover', 'failed', 'queued', 'idle'];
   const fixture = {
     connection: mode === 'stale' ? 'disconnected' : 'connected',
     version: 'TEST FIXTURE',
@@ -17,12 +17,23 @@ if (mode) {
             { id: 'two', name: 'Operations' },
           ],
     recent: [],
+    channels:
+      mode === 'empty'
+        ? []
+        : [
+            {
+              id: 'channel-test',
+              name: 'Project Falcon',
+              agentIds: ['test-0', 'test-1'],
+              active: true,
+            },
+          ],
     agents:
       mode === 'empty'
         ? []
         : kinds.map((state, i) => ({
             id: 'test-' + i,
-            name: ['Ari', 'Bo', 'Cam', 'Dee', 'Eli', 'Fin'][i],
+            name: ['Ari', 'Bo', 'Cam', 'Dee', 'Eli', 'Fin', 'Gia'][i],
             title: 'Test teammate',
             provider: 'example',
             model: 'example-model',

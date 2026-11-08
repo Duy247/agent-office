@@ -20,6 +20,14 @@ Run npm run typecheck, npm test and npm run build. Set OFFICE_LIVE_TEST=1 while 
 
 Browser checks cover the built office, custom code-created asset, local GLB loading, editing preview, source labels, agent selection and live source continuity. Private installation-specific connection evidence and screenshots are deliberately excluded from the template export.
 
+## Team sidebar
+
+The sidebar uses the existing filtered snapshot and event stream. It shows reported activity, queue counts, provider/model, office area, channel membership and last state change. Queue titles and conversation content remain in Openbot. Office area identifies the agent's group, not its current animated position. Stale connections preserve the last reported states.
+
+Windows browser checks covered the live roster, character portraits, selection, camera focus, filtering, attention states, channel membership, changing snapshots, selected-agent removal, empty and stale states, and a 390-pixel phone layout. Automated tests cover filter boundaries, attention sorting, missing activity/timestamps and current group/channel membership. The user also confirmed the earlier live channel meeting behavior in Openbot.
+
+All 66 tests passed on Windows with live HTTP checks enabled. Type checking, formatting, documentation checks and production build passed.
+
 ## Performance validation
 
 The park/channel update passed all 61 Windows tests with the live HTTP suite enabled, plus type, format, build and documentation checks. Browser fixtures verified park visits, walking, unique conference seats, the channel-name screen, return after completion, and pause/stale behavior. Authenticated read-only discovery against installed Openbot 0.65.0 confirmed channel-chats-v1 and channel-attention-v1 and a successful channel-summary read. No channels were configured during that check; meeting activity was demonstrated with synthetic data, without creating work or channels in Openbot.
