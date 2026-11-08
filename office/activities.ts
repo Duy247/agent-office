@@ -240,7 +240,7 @@ export class ActivityDirector {
         visit = {
           roomId: p.id,
           seconds: 0,
-          next: 12 + (agentSeed(agent.id) % 20),
+          next: 20 + (agentSeed(agent.id) % 20),
           goal: {
             ...s,
             id: `lounge-${agent.id}`,
@@ -252,6 +252,21 @@ export class ActivityDirector {
             approach: { x: s.x, z: s.z + 0.75 },
           },
         };
+        // Give a fresh page visible activity immediately, including a useful static
+        // arrangement for reduced-motion users. Later visits still use the idle timer.
+        const available = campusLeisureSpots(p).filter(
+          (spot) => !spot.id.startsWith('lounge-') && !used.has(p.id + ':' + spot.id),
+        );
+        const ordinal = [...this.visits.values()].filter((v) => v.roomId === p.id).length;
+        const zone = ['park-', 'cafe-', 'arcade-', 'tennis-'][ordinal % 4];
+        const preferred = available.filter((spot) => spot.id.startsWith(zone));
+        const choices = preferred.length ? preferred : available;
+        if (choices.length)
+          visit.goal = {
+            ...choices[agentSeed(agent.id) % choices.length],
+            kind: 'leisure',
+            roomId: p.id,
+          };
         this.visits.set(agent.id, visit);
         used.add(p.id + ':' + visit.goal.id);
       }

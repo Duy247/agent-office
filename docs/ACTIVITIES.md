@@ -1,6 +1,6 @@
 # Roaming, the park and channel meetings
 
-Idle agents occasionally leave their usual lounge seat to visit the café, arcade, table tennis, park paths or park benches. Destinations are reserved so two agents do not claim the same seat. Working or waiting agents do not wander for leisure. New real work interrupts an idle visit immediately.
+Idle agents receive different leisure destinations as soon as the office loads, then occasionally visit the café, arcade, table tennis, park paths or park benches. Destinations are reserved so two agents do not claim the same seat. Working or waiting agents do not wander for leisure. New real work interrupts an idle visit immediately. Reduced-motion views place idle agents directly at their initial destinations without animated travel.
 
 Green-tinted idle bubbles such as **Strolling**, **Chilling**, **Chatting**, **Whispering**, **Coffee break** and **Playing** are decorative ambient cues. They are not actual conversations, agent reasoning or evidence that an AI provider is running. They make no AI calls. Work bubbles use the source's reported activity and are shown only for the working state. Neither kind appears on a disconnected feed; reduced motion stops idle visits and ambient cues.
 

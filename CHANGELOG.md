@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Idle agents choose varied leisure destinations immediately on a fresh page, including static placement for reduced-motion views.
 - Park yard, reserved leisure destinations, occasional decorative idle bubbles, and furniture-aware roaming.
 - Read-only shared-channel activity, expandable conference seating, channel-name screens and cross-group footbridges.
 - Batched static scenery and articulated character sections, preserving geometry and colours.

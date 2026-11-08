@@ -64,6 +64,16 @@ test('idle visits cover park and entertainment, remain unique, and stop for work
   d.update(s, plans, 0, true);
   assert.equal(d.goals.get('a0')?.kind, 'desk');
 });
+test('a fresh office immediately sends idle agents to different leisure zones without waiting for animation time', () => {
+  for (const reducedMotion of [false, true]) {
+    const s = fixture();
+    s.config.reducedMotion = reducedMotion;
+    const d = new ActivityDirector(),
+      goals = d.update(s, planRooms(s), 0, true);
+    assert.ok([...goals.values()].every((g) => g.kind === 'leisure'));
+    assert.equal(new Set([...goals.values()].map((g) => g.id.split('-')[0])).size, 3);
+  }
+});
 test('active shared channels reserve unique conference seats, override leisure, and release on completion', () => {
   const s = fixture(8);
   s.channels = [

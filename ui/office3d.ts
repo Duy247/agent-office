@@ -563,10 +563,16 @@ export function createOffice3D(
             .map((p) => new THREE.Vector3(...p));
           path.push(end.clone());
         } else if (actor.plan.park && router) {
-          const startApproach =
+          let startApproach =
             !actor.path.length && actor.goal?.seated
               ? goalPoint(actor, actor.goal, true)
               : start.clone();
+          if (!actor.path.length && !actor.goal) {
+            if (start.distanceTo(actor.seat) < 0.1)
+              startApproach = actor.seat.clone().add(new THREE.Vector3(0, 0, 0.75));
+            else if (start.distanceTo(actor.desk) < 0.1)
+              startApproach = actor.desk.clone().add(new THREE.Vector3(0.65, 0, 0.7));
+          }
           const endApproach = goal.seated ? goalPoint(actor, goal, true) : end.clone();
           const world = (v: THREE.Vector3) => ({
             x: v.x + actor.plan.offsetX,
