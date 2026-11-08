@@ -3,6 +3,7 @@ import type { BossProfile } from '../src/shared.ts';
 import type { RoomPlan, RoomContext, FrameContext } from './sdk.ts';
 import { createPerson } from '../ui/characters.ts';
 import { lettering } from './text.ts';
+import { batchStaticMeshes, optimizeCharacter } from './optimize.ts';
 
 /** A separate local resident; never an Openbot agent or a source of work events. */
 export function withBossRoom(rooms: RoomPlan[], boss?: BossProfile): RoomPlan[] {
@@ -163,7 +164,9 @@ export function buildBossRoom(ctx: RoomContext) {
     new THREE.MeshBasicMaterial({ map: lettering(boss.name, '#dcc6a0'), transparent: true }),
   );
   ctx.add('boss-name', nameplate, { position: [3.3, 2.04, 0.19] });
+  batchStaticMeshes(ctx.room);
   const person = createBossPerson(boss.gender);
+  optimizeCharacter(person);
   ctx.add('boss-resident', person.root, { position: [3.3, 0, 1.35] });
   person.pose(true, true);
   residents.set(person.root, { person, seconds: 0 });

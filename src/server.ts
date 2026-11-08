@@ -5,6 +5,7 @@ import { readSettings, updateLocalConfig, projectRoot } from './config.ts';
 import { publicSnapshot } from './boundary.ts';
 import { createConnector } from './connectors/index.ts';
 import { allowsOfficeRequest } from './access.ts';
+import { precompressedAssets, assetCacheControl } from './static-assets.ts';
 const config = await readSettings(),
   root = projectRoot;
 const port =
@@ -17,8 +18,12 @@ let snapshot = publicSnapshot({
   agents: [],
   groups: [],
 });
+let wireSnapshot = JSON.stringify(snapshot);
 function publish() {
-  const data = 'data: ' + JSON.stringify(snapshot) + '\n\n';
+  const next = JSON.stringify(snapshot);
+  if (next === wireSnapshot) return;
+  wireSnapshot = next;
+  const data = 'data: ' + wireSnapshot + '\n\n';
   for (const r of clients) {
     if (r.writableLength > 1024 * 1024) {
       r.end();
@@ -42,7 +47,7 @@ app.use((req, res, next) => {
 });
 app.get('/api/state', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json(snapshot);
+  res.type('json').send(wireSnapshot);
 });
 app.get('/api/events', (req, res) => {
   if (clients.size >= 12) return void res.status(503).end();
@@ -52,14 +57,22 @@ app.get('/api/events', (req, res) => {
     Connection: 'keep-alive',
   });
   clients.add(res);
-  res.write('data: ' + JSON.stringify(snapshot) + '\n\n');
+  res.write('data: ' + wireSnapshot + '\n\n');
   const keep = setInterval(() => res.write(': heartbeat\n\n'), 15000);
   req.on('close', () => {
     clearInterval(keep);
     clients.delete(res);
   });
 });
-app.use(express.static(join(root, 'dist'), { etag: true }));
+app.use(precompressedAssets(join(root, 'dist')));
+app.use(
+  express.static(join(root, 'dist'), {
+    etag: true,
+    setHeaders(res, path) {
+      res.setHeader('Cache-Control', assetCacheControl(path));
+    },
+  }),
+);
 const server = app.listen(port, '127.0.0.1', () =>
   console.log(`Office dashboard: http://127.0.0.1:${port}`),
 );

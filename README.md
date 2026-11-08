@@ -75,6 +75,8 @@ Register procedural Three.js assets or local GLB/glTF/OBJ models in that same fi
 
 See [the authoring guide](docs/AUTHORING.md) for custom assets, groups, room layout, lights, animation, walking routes and model import details.
 
+The default scene batches static geometry, sleeps when paused or hidden, and serves compressed assets. See [performance measurements and tuning](docs/PERFORMANCE.md) for results and custom-design controls.
+
 ### Boss room
 
 The default design includes a separate executive suite with a local boss character. It uses the final folder name from Windows `USERPROFILE` (or the home directory on other systems) and the male model unless you configure it. The boss is a visual resident, not an Openbot agent: it stays at its desk most of the time, occasionally walks onto the connecting terrace, pauses and returns. It makes no AI calls. Motion pauses when reduced motion is enabled or the source disconnects.

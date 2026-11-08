@@ -159,13 +159,16 @@ export function createPerson(variant: number, style?: 'executive-male' | 'execut
 }
 
 const portraits = new Map<number, string>();
+let portraitRenderer: THREE.WebGLRenderer | undefined;
+let releasePortrait: ReturnType<typeof setTimeout> | undefined;
 export function characterPortrait(variant: number) {
   if (portraits.has(variant)) return portraits.get(variant)!;
-  const renderer = new THREE.WebGLRenderer({
+  if (releasePortrait) clearTimeout(releasePortrait);
+  const renderer = (portraitRenderer ??= new THREE.WebGLRenderer({
     antialias: true,
     alpha: true,
     preserveDrawingBuffer: true,
-  });
+  }));
   renderer.setSize(160, 160);
   renderer.setPixelRatio(1);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -183,8 +186,13 @@ export function characterPortrait(variant: number) {
   const data = renderer.domElement.toDataURL();
   portraits.set(variant, data);
   disposeObject(person.root);
-  renderer.dispose();
-  renderer.forceContextLoss();
+  // Avatar effects in one panel share a context; release it as soon as that burst settles.
+  releasePortrait = setTimeout(() => {
+    portraitRenderer?.dispose();
+    portraitRenderer?.forceContextLoss();
+    portraitRenderer = undefined;
+    releasePortrait = undefined;
+  }, 250);
   return data;
 }
 export function disposeObject(root: THREE.Object3D) {

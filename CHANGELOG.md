@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Batched static scenery and articulated character sections, preserving geometry and colours.
+- Demand rendering for paused/stale views, hidden-tab suspension, adaptive pixel ratio and fewer redundant live-state updates.
+- Build-time furniture pack, deferred optional parsers, Brotli/gzip delivery and immutable hashed asset caching.
 - Head-level activity bubbles for live working agents; hidden for all other states and stale connections.
 - Optional exact HTTPS reverse-proxy origin while retaining loopback binding and read-only routes.
 - Minimal executive suite, configurable local boss profile, distinct tailored character models, and occasional visual-only terrace walks.

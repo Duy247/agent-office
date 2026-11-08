@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { OfficeSnapshot } from '../src/shared.ts';
 import './style.css';
@@ -108,6 +108,7 @@ function Avatar({ character, large = false }: { character: number; large?: boole
     <span className="portrait" />
   );
 }
+const MemoOfficeCanvas = React.memo(OfficeCanvas);
 function App() {
   const [state, setState] = useState(blank),
     [selected, setSelected] = useState<string | null>(null),
@@ -117,20 +118,34 @@ function App() {
     [focusRequest, setFocusRequest] = useState<{ id: string; version: number } | null>(null);
   useEffect(() => {
     const stream = new EventSource('/api/events');
+    let previous = '',
+      reconnecting = false;
     stream.onmessage = (e) => {
       try {
+        if (!reconnecting && previous === e.data) return;
         setState(JSON.parse(e.data));
+        previous = e.data;
+        reconnecting = false;
       } catch {}
     };
-    stream.onerror = () =>
+    stream.onerror = () => {
+      reconnecting = true;
       setState((s) => ({
         ...s,
         connection: 'disconnected',
         message: 'Dashboard connection lost · retrying',
       }));
+    };
     return () => stream.close();
   }, []);
   const agent = state.agents.find((a) => a.id === selected) ?? null;
+  const sceneState = useMemo(
+    () => ({
+      ...state,
+      config: { ...state.config, reducedMotion: quiet || state.config.reducedMotion },
+    }),
+    [state, quiet],
+  );
   const live = state.connection === 'connected';
   const closePanel = () => {
     setSelected(null);
@@ -138,11 +153,8 @@ function App() {
   };
   return (
     <main className="office-screen" aria-label="Office">
-      <OfficeCanvas
-        state={{
-          ...state,
-          config: { ...state.config, reducedMotion: quiet || state.config.reducedMotion },
-        }}
+      <MemoOfficeCanvas
+        state={sceneState}
         selected={selected}
         onSelect={setSelected}
         viewVersion={viewVersion}

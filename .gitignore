@@ -17,3 +17,4 @@ release/
 Thumbs.db
 coverage/
 /public/assets/local/
+/public/assets/furniture-3d/office-models.json

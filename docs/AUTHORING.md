@@ -130,3 +130,5 @@ Custom walls/furniture may require custom walking paths. Define `route({agent, p
 `update({room, plan, objects, snapshot, elapsed, delta})` runs per visual frame while connected and motion is enabled. Use it for fans, art, ambient animation or mixers. It pauses for reduced motion, the Pause motion button and stale connections. The example sculpture demonstrates an animation using its object ID. Do not make AI calls for animation. Your local design code is trusted code, not a sandbox.
 
 Run `npm run package` to export a clean source template. Export excludes local settings, credentials, connection proof and personal screenshots.
+
+See [performance and static batching](PERFORMANCE.md) before animating individual pieces of the supplied room/workstation presets. Their default batching can be disabled with `{ batch: false }`; async visual changes can call `ctx.invalidate?.()` to redraw a paused scene.

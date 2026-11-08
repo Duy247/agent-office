@@ -44,6 +44,7 @@ export function placeWallLogo(
       const w = Math.min(width * 0.88, height * 0.76 * aspect);
       image.scale.set(w, w / aspect, 1);
       root.visible = true;
+      ctx.invalidate?.();
     },
     undefined,
     () => {

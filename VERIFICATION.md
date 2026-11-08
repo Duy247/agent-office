@@ -20,7 +20,11 @@ Run npm run typecheck, npm test and npm run build. Set OFFICE_LIVE_TEST=1 while 
 
 Browser checks cover the built office, custom code-created asset, local GLB loading, editing preview, source labels, agent selection and live source continuity. Private installation-specific connection evidence and screenshots are deliberately excluded from the template export.
 
-## Latest local run
+## Performance validation
+
+The optimization pass added regression coverage for static batching, rigid character joints, mirrored geometry, material groups, compiled model scale, adaptive resolution and compressed HTTP delivery. Windows live validation passed all 53 tests, type checking and production build. Browser tests covered 3 and 50 working agents, retained geometry, paused rendering, visibility suspension/resume, and production scene/selection/live updates through an explicitly configured HTTPS proxy. See [measured results](docs/PERFORMANCE.md). Installation-specific screenshots and benchmark scratch files remain local.
+
+## Initial template local run
 
 On Windows, all 37 tests passed with the live HTTP suite enabled; type checking and production build passed. The shareable ZIP was extracted into a separate folder, dependencies installed using npm ci, built, and its dependency-free demo source launched on a separate port. The browser explicitly displayed Demo and four sample agents. A JSON-file adapter instance also ran independently and exposed its own normalized agent. The original installation continued using its separately stored Openbot session.
 

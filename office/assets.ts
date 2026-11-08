@@ -1,7 +1,4 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import type { AssetDefinition, AssetLibrary } from './sdk.ts';
 
@@ -95,12 +92,15 @@ export class Assets implements AssetLibrary {
         let object: THREE.Object3D;
         if (d.type === 'factory') object = await d.create();
         else if (d.type === 'gltf') {
+          const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
           const gltf = await new GLTFLoader(manager).loadAsync(localAssetPath(d.url));
           object = gltf.scene;
           object.animations = gltf.animations;
         } else {
+          const { OBJLoader } = await import('three/addons/loaders/OBJLoader.js');
           const loader = new OBJLoader(manager);
           if (d.materials) {
+            const { MTLLoader } = await import('three/addons/loaders/MTLLoader.js');
             const materials = await new MTLLoader(manager)
               .setResourcePath(d.materials.slice(0, d.materials.lastIndexOf('/') + 1))
               .loadAsync(localAssetPath(d.materials));

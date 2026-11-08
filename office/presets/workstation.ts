@@ -8,15 +8,17 @@ import {
   SEATED_ROTATION,
 } from '../constants.ts';
 import { lettering } from '../text.ts';
+import { batchStaticMeshes } from '../optimize.ts';
 
 /** The anchor is a real child of the station, so moving/rotating it also moves the seated agent. */
-export function buildWorkstation(ctx: WorkstationContext): Workstation {
+export function buildWorkstation(ctx: WorkstationContext, options = { batch: true }): Workstation {
   const { agent, model } = ctx,
     { x, z } = ctx.plan.desks.get(agent.id)!;
   const root = ctx.add(`desk:${agent.id}`, new THREE.Group(), { position: [x, 0, z] });
   model(root, 'desk', 0, 0);
   model(root, 'chairDesk', 0, 0.92, 0, CHAIR_ROTATION);
   const monitor = model(root, 'computerScreen', 0, -0.21, DESK_SURFACE, MONITOR_ROTATION);
+  monitor.userData.officeDynamic = true;
   model(root, 'computerKeyboard', -0.13, 0.2, DESK_SURFACE, KEYBOARD_ROTATION);
   model(root, 'computerMouse', 0.48, 0.19, DESK_SURFACE);
   const plate = new THREE.Mesh(
@@ -40,5 +42,6 @@ export function buildWorkstation(ctx: WorkstationContext): Workstation {
   workAnchor.position.set(0, 0, 0.9);
   workAnchor.rotation.y = SEATED_ROTATION;
   root.add(workAnchor);
+  if (options.batch) batchStaticMeshes(root);
   return { root, workAnchor, screen };
 }

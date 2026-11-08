@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import type { RoomContext } from '../sdk.ts';
 import { dressCampus } from './campus.ts';
 import { lettering } from '../text.ts';
+import { batchStaticMeshes } from '../optimize.ts';
 
 /** Replace this preset or call it and add/move objects afterward. */
-export function buildCampusRoom(ctx: RoomContext) {
+export function buildCampusRoom(ctx: RoomContext, options = { batch: true }) {
   const { room, plan, model } = ctx,
     { minX, maxX, minZ, maxZ, width, depth } = plan,
     cx = (minX + maxX) / 2,
@@ -26,4 +27,5 @@ export function buildCampusRoom(ctx: RoomContext) {
     new THREE.MeshBasicMaterial({ map: lettering(plan.name, '#3e5962'), transparent: true }),
   );
   ctx.add('room-name', plate, { position: [pod.x, 2.15, pod.z + 0.02] });
+  if (options.batch) batchStaticMeshes(room);
 }

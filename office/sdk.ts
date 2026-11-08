@@ -95,6 +95,8 @@ export class Builder {
   }
 }
 export interface RoomContext extends Builder {
+  /** Request one redraw after an async visual change, including while motion is paused. */
+  invalidate?: () => void;
   plan: RoomPlan;
   snapshot: OfficeSnapshot;
   room: THREE.Group;
@@ -125,6 +127,7 @@ export interface FrameContext {
   delta: number;
 }
 export interface OfficeDefinition {
+  performance?: { maxPixelRatio?: number; adaptiveResolution?: boolean };
   camera?: { direction?: Vec3; padding?: number; maxZoom?: number };
   assets?: Record<string, AssetDefinition>;
   layout: (snapshot: OfficeSnapshot) => RoomPlan[];

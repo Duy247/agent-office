@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import type { OfficeAgent, OfficeSnapshot, OfficeState } from '../src/shared.ts';
 import { createPerson, disposeObject } from './characters.ts';
 import type { RoomPlan } from './layout.ts';
@@ -18,6 +16,9 @@ import { Assets } from '../office/assets.ts';
 import { lettering } from '../office/text.ts';
 import { createActivityBubble, setActivityBubble, workingBubbleText } from './activity-bubble.ts';
 import { MODEL_SCALE } from '../office/constants.ts';
+import { optimizeCharacter } from '../office/optimize.ts';
+import { RenderBudget } from './render-budget.ts';
+import { readFurniturePack } from '../office/furniture-pack.ts';
 export {
   MODEL_SCALE,
   DESK_SURFACE,
@@ -37,24 +38,6 @@ const colors: Record<OfficeState, string> = {
   failed: '#cf5350',
   unknown: '#7e9390',
 };
-const modelNames = [
-  'desk',
-  'chairDesk',
-  'computerScreen',
-  'computerKeyboard',
-  'computerMouse',
-  'loungeSofa',
-  'loungeChair',
-  'tableCoffee',
-  'pottedPlant',
-  'bookcaseOpen',
-  'books',
-  'kitchenCoffeeMachine',
-  'kitchenCabinetDrawer',
-  'kitchenFridgeSmall',
-  'lampRoundFloor',
-  'trashcan',
-];
 type Person = ReturnType<typeof createPerson>;
 type Actor = {
   person: Person;
@@ -116,9 +99,13 @@ export function createOffice3D(
   onError: (message: string) => void,
 ) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+  const budget = new RenderBudget(
+    Math.min(devicePixelRatio || 1, design.performance?.maxPixelRatio ?? 1.75),
+  );
+  renderer.setPixelRatio(budget.ratio);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.autoUpdate = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -165,15 +152,49 @@ export function createOffice3D(
   let snapshot: OfficeSnapshot | undefined,
     selected: string | null = null,
     signature = '',
+    visualSignature = '',
     ready = false,
     disposed = false,
+    contextLost = false,
     frame = 0,
     last = 0,
-    roomCount = 1,
+    animationElapsed = 0,
     fitWidth = 15,
     fitHeight = 11,
     viewDirty = true;
   let down: { x: number; y: number } | undefined;
+  function wake() {
+    if (!disposed && !contextLost && !document.hidden && !frame)
+      frame = requestAnimationFrame(draw);
+  }
+  function invalidate() {
+    viewDirty = true;
+    wake();
+  }
+  controls.addEventListener('change', invalidate);
+  const visibility = () => {
+    if (document.hidden) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    } else {
+      last = performance.now();
+      invalidate();
+    }
+  };
+  document.addEventListener('visibilitychange', visibility);
+  media.addEventListener('change', invalidate);
+  const loseContext = () => {
+    contextLost = true;
+    cancelAnimationFrame(frame);
+    frame = 0;
+  };
+  const restoreContext = () => {
+    contextLost = false;
+    renderer.shadowMap.needsUpdate = true;
+    invalidate();
+  };
+  canvas.addEventListener('webglcontextlost', loseContext);
+  canvas.addEventListener('webglcontextrestored', restoreContext);
   const pickDown = (e: PointerEvent) => {
     down = { x: e.clientX, y: e.clientY };
   };
@@ -215,7 +236,7 @@ export function createOffice3D(
     camera.top = half;
     camera.bottom = -half;
     camera.updateProjectionMatrix();
-    viewDirty = true;
+    invalidate();
   };
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
@@ -274,52 +295,24 @@ export function createOffice3D(
     camera.zoom = Math.min(controls.maxZoom, Math.max(1, (camera.top - camera.bottom) / 5.5));
     controls.update();
     camera.updateProjectionMatrix();
+    invalidate();
   }
 
   resetView();
   design.configureScene?.({ scene, camera, renderer, sun, controls });
   async function load() {
     try {
-      await Promise.all(
-        modelNames.map(async (name) => {
-          const base = '/assets/furniture-3d/';
-          const materials = await new MTLLoader().loadAsync(base + name + '.mtl');
-          materials.preload();
-          const object = await new OBJLoader()
-            .setMaterials(materials)
-            .loadAsync(base + name + '.obj');
-          // All source models share the same units; retain those proportions and place their bases at y=0.
-          const bounds = new THREE.Box3().setFromObject(object),
-            center = bounds.getCenter(new THREE.Vector3());
-          object.position.set(-center.x, -bounds.min.y, -center.z);
-          const template = new THREE.Group();
-          template.add(object);
-          template.scale.setScalar(MODEL_SCALE);
-          object.traverse((o) => {
-            if (o instanceof THREE.Mesh) {
-              const source = Array.isArray(o.material) ? o.material : [o.material];
-              const converted = source.map((m) => {
-                const color = (m as THREE.MeshPhongMaterial).color;
-                const material = new THREE.MeshStandardMaterial({
-                  color,
-                  roughness: 0.82,
-                  metalness: 0,
-                });
-                material.name = m.name;
-                if (name === 'desk' && m.name === 'wood') material.color.set('#e6e2d6');
-                if (name === 'chairDesk' && m.name === 'carpet') material.color.set('#53798e');
-                m.dispose();
-                return material;
-              });
-              o.material = Array.isArray(o.material) ? converted : converted[0];
-              o.castShadow = true;
-              o.receiveShadow = true;
-            }
-          });
-          templates.set('kenney/' + name, template);
+      const [pack] = await Promise.all([
+        fetch('/assets/furniture-3d/office-models.json').then(async (response) => {
+          if (!response.ok) throw new Error('Furniture pack is missing. Run npm run build.');
+          return readFurniturePack(await response.json());
         }),
-      );
-      await library.load(design.assets ?? {});
+        library.load(design.assets ?? {}),
+      ]);
+      for (const template of [...pack.children]) {
+        template.removeFromParent();
+        templates.set(template.name, template);
+      }
       if (disposed) {
         templates.forEach(disposeObject);
         return;
@@ -352,7 +345,6 @@ export function createOffice3D(
     actors.clear();
     rooms.length = 0;
     const plans = design.layout(snapshot!);
-    roomCount = plans.length;
     for (const plan of plans) {
       const room = new THREE.Group();
       room.position.set(plan.offsetX, 0, plan.offsetZ);
@@ -362,6 +354,7 @@ export function createOffice3D(
         snapshot: snapshot!,
         room,
         model,
+        invalidate,
       }) satisfies RoomContext;
       rooms.push(ctx);
       design.buildRoom(ctx);
@@ -405,6 +398,7 @@ export function createOffice3D(
             : new THREE.Vector3(lounge!.x, 0, lounge!.z),
           idleFacing = station.idleAnchor ? relativeFacing(station.idleAnchor) : 0;
         const person = createPerson(a.character);
+        optimizeCharacter(person);
         person.root.userData.agentId = a.id;
         room.add(person.root);
         const name = label(a.name, 1.4);
@@ -462,6 +456,7 @@ export function createOffice3D(
     sun.shadow.camera.bottom = -shadowExtent;
     sun.shadow.camera.far = size.length() * 3 + 100;
     sun.shadow.camera.updateProjectionMatrix();
+    renderer.shadowMap.needsUpdate = true;
     resetView();
   }
   function sync() {
@@ -472,6 +467,13 @@ export function createOffice3D(
       snapshot.config.boss,
       snapshot.agents.map((a) => [a.id, a.name, a.character, a.groupId, a.deskIndex, a.desk]),
     ]);
+    const visual = JSON.stringify([
+      snapshot.connection,
+      snapshot.config.reducedMotion,
+      selected,
+      snapshot.agents.map((a) => [a.state, a.queueCount, a.activity]),
+    ]);
+    if (next === signature && visual === visualSignature) return;
     if (next !== signature) {
       try {
         rebuild();
@@ -502,7 +504,7 @@ export function createOffice3D(
                   ? String(a.queueCount)
                   : '';
       actor.badge.visible = !!text;
-      setBadge(actor.badge, text, colors[a.state]);
+      if (text) setBadge(actor.badge, text, colors[a.state]);
       const key = a.state === 'idle' ? 'lounge' : 'desk';
       if (key !== actor.targetKey) {
         actor.targetKey = key;
@@ -538,22 +540,31 @@ export function createOffice3D(
         }
       }
     }
-    viewDirty = true;
+    visualSignature = visual;
+    renderer.shadowMap.needsUpdate = true;
+    invalidate();
   }
+  const moveDelta = new THREE.Vector3();
   function draw(time: number) {
-    frame = requestAnimationFrame(draw);
-    if (time - last < 33) return;
+    frame = 0;
+    if (disposed || contextLost || document.hidden) return;
+    if (time - last < 33) {
+      wake();
+      return;
+    }
     const dt = Math.min(0.06, (time - last) / 1000);
     last = time;
     const reduced =
       media.matches || snapshot?.config.reducedMotion || snapshot?.connection !== 'connected';
+    if (reduced && !viewDirty) return;
+    if (!reduced) animationElapsed += dt;
     controls.enableDamping = !reduced;
     controls.update();
     for (const actor of actors.values()) {
       const moving = actor.path.length > 0;
       if (!reduced && moving) {
         const target = actor.path[0],
-          delta = target.clone().sub(actor.person.root.position);
+          delta = moveDelta.copy(target).sub(actor.person.root.position);
         if (delta.length() < 0.055) {
           actor.person.root.position.copy(target);
           actor.path.shift();
@@ -594,7 +605,7 @@ export function createOffice3D(
             plan: ctx.plan,
             objects: ctx.objects,
             snapshot,
-            elapsed: time / 1000,
+            elapsed: animationElapsed,
             delta: dt,
           });
       } catch (e) {
@@ -603,10 +614,21 @@ export function createOffice3D(
         );
       }
     }
+    if (!reduced) renderer.shadowMap.needsUpdate = true;
+    const renderStarted = performance.now();
     renderer.render(scene, camera);
+    const renderMs = performance.now() - renderStarted;
     viewDirty = false;
+    if (!reduced && design.performance?.adaptiveResolution !== false) {
+      const ratio = budget.sample(renderMs);
+      if (ratio !== undefined) {
+        renderer.setPixelRatio(ratio);
+        resize();
+      }
+    }
+    if (!reduced) wake();
   }
-  frame = requestAnimationFrame(draw);
+  wake();
   void load();
   return {
     update(state: OfficeSnapshot, id: string | null) {
@@ -621,6 +643,11 @@ export function createOffice3D(
       cancelAnimationFrame(frame);
       observer.disconnect();
       controls.dispose();
+      controls.removeEventListener('change', invalidate);
+      document.removeEventListener('visibilitychange', visibility);
+      media.removeEventListener('change', invalidate);
+      canvas.removeEventListener('webglcontextlost', loseContext);
+      canvas.removeEventListener('webglcontextrestored', restoreContext);
       canvas.removeEventListener('pointerdown', pickDown);
       canvas.removeEventListener('pointerup', pickUp);
       disposeObject(world);
