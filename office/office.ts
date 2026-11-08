@@ -5,6 +5,7 @@ import { buildCampusRoom } from './presets/room.ts';
 import { buildWorkstation } from './presets/workstation.ts';
 import { createSculpture } from './assets/sculpture.ts';
 import { placeWallLogo } from './logo.ts';
+import { withBossRoom, buildBossRoom, updateBossRoom } from './boss.ts';
 import { createTree, createPlanter, createArcade, createTableTennis } from './presets/campus.ts';
 
 export default defineOffice({
@@ -26,9 +27,13 @@ export default defineOffice({
     const rooms = autoLayout(snapshot);
     // Examples: rooms[0].desks.set('agent-id', {x:2, z:1});
     // Expand room bounds and update width/depth if you move desks outside the floor.
-    return rooms;
+    return withBossRoom(rooms, snapshot.config.boss);
   },
   buildRoom(ctx) {
+    if (ctx.plan.kind === 'boss') {
+      buildBossRoom(ctx);
+      return;
+    }
     buildCampusRoom(ctx); // Delete this call and build your entire room with ctx.box/group/place.
     placeWallLogo(ctx);
     ctx.place('my-sculpture', 'sculpture', {
@@ -51,7 +56,9 @@ export default defineOffice({
   configureScene({ scene }) {
     scene.background = new THREE.Color('#e8edeb');
   },
-  update({ objects, elapsed }) {
+  update(ctx) {
+    const { objects, elapsed } = ctx;
+    updateBossRoom(ctx);
     // Visual-only animation; automatically paused for reduced motion and stale connections.
     const rings = objects.get('my-sculpture')?.getObjectByName('rings');
     if (rings) rings.rotation.y = elapsed * 0.12;

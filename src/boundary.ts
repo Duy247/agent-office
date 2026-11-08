@@ -88,6 +88,14 @@ export function publicSnapshot(raw: any): OfficeSnapshot {
       title: clean(raw?.config?.title),
       reducedMotion: raw?.config?.reducedMotion === true,
       ...(publicLogo(raw?.config?.logo) ? { logo: publicLogo(raw.config.logo) } : {}),
+      ...(clean(raw?.config?.boss?.name, 60)
+        ? {
+            boss: {
+              name: clean(raw.config.boss.name, 60),
+              gender: raw.config.boss.gender === 'female' ? ('female' as const) : ('male' as const),
+            },
+          }
+        : {}),
     },
     ...(raw?.source
       ? {

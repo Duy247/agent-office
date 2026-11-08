@@ -71,6 +71,20 @@ Register procedural Three.js assets or local GLB/glTF/OBJ models in that same fi
 
 See [the authoring guide](docs/AUTHORING.md) for custom assets, groups, room layout, lights, animation, walking routes and model import details.
 
+### Boss room
+
+The default design includes a separate executive suite with a local boss character. It uses the final folder name from Windows `USERPROFILE` (or the home directory on other systems) and the male model unless you configure it. The boss is a visual resident, not an Openbot agent: it stays at its desk most of the time, occasionally walks onto the connecting terrace, pauses and returns. It makes no AI calls. Motion pauses when reduced motion is enabled or the source disconnects.
+
+Run `npm run boss` to enter a name and choose `male` or `female`. Or add this to `office.config.local.json`, keeping your existing settings:
+
+```json
+{
+  "boss": { "name": "Alex", "gender": "female" }
+}
+```
+
+Restart the office to apply changes. Use `"boss": { "enabled": false }` to omit the suite. Profiles stay local. Edit `office/boss.ts` for the room, fashion models, placement and walking route; the default design calls `withBossRoom`, `buildBossRoom` and `updateBossRoom` so you can replace any part in code. The male model has a dark tailored suit; the female model has a cream blazer, wide-leg trousers and gold accessories. Both retain the office's block-style 3D character design.
+
 ### Wall logo
 
 Put your SVG, ICO, PNG, JPEG or WebP logo in `public/assets/local/` (create the folder), then add this to `office.config.local.json`:

@@ -5,6 +5,7 @@ export interface FloorPoint {
   z: number;
 }
 export interface RoomPlan {
+  kind?: 'boss';
   id: string;
   name: string;
   agents: OfficeAgent[];

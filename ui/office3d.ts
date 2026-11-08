@@ -363,7 +363,7 @@ export function createOffice3D(
       }) satisfies RoomContext;
       rooms.push(ctx);
       design.buildRoom(ctx);
-      if (!plan.agents.length) {
+      if (!plan.agents.length && plan.kind !== 'boss') {
         const empty = label('Create agents in Openbot.', 3.5);
         empty.position.set((plan.minX + plan.maxX) / 2, 0.7, (plan.minZ + plan.maxZ) / 2);
         room.add(empty);
@@ -464,6 +464,7 @@ export function createOffice3D(
     const next = JSON.stringify([
       snapshot.groups,
       snapshot.config.logo,
+      snapshot.config.boss,
       snapshot.agents.map((a) => [a.id, a.name, a.character, a.groupId, a.deskIndex, a.desk]),
     ]);
     if (next !== signature) {

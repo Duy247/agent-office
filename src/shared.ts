@@ -24,7 +24,11 @@ export interface OfficeSnapshot {
   agents: OfficeAgent[];
   groups: { id: string; name: string }[];
   recent: { at: string; agentId: string; kind: string }[];
-  config: { title: string; reducedMotion: boolean; logo?: OfficeLogo };
+  config: { title: string; reducedMotion: boolean; logo?: OfficeLogo; boss?: BossProfile };
+}
+export interface BossProfile {
+  name: string;
+  gender: 'male' | 'female';
 }
 export interface OfficeLogo {
   url: string;

@@ -1,6 +1,24 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, basename, win32 } from 'node:path';
+import { homedir } from 'node:os';
+import type { BossProfile } from './shared.ts';
+export function resolveBoss(
+  raw: any,
+  profilePath = process.env.USERPROFILE ?? homedir(),
+): BossProfile | undefined {
+  if (raw?.enabled === false) return;
+  const fallback = win32.basename(profilePath) || basename(profilePath) || 'Boss';
+  const name = typeof raw?.name === 'string' && raw.name.trim() ? raw.name : fallback;
+  return {
+    name:
+      name
+        .replace(/[\u0000-\u001f]/g, ' ')
+        .trim()
+        .slice(0, 60) || 'Boss',
+    gender: raw?.gender === 'female' ? 'female' : 'male',
+  };
+}
 export const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 export function mergeConfig(base: any, local: any): any {
   const out = { ...base };
@@ -37,6 +55,7 @@ export async function readSettings(root = projectRoot, includeCLI = true) {
       ...config.connector,
       options: { ...config.connector?.options, profile: arg('--profile') },
     };
+  config.boss = resolveBoss(config.boss);
   return config;
 }
 export async function updateLocalConfig(patch: any, root = projectRoot) {

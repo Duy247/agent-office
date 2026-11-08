@@ -25,6 +25,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "boss": "node scripts/configure-boss.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docs:check": "node scripts/check-docs.ts",
