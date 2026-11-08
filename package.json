@@ -2,7 +2,7 @@
   "name": "agent-office",
   "version": "0.1.0",
   "private": true,
-  "description": "A programmable local 3D office with custom assets and replaceable read-only agent connectors.",
+  "description": "A customizable local 3D office dashboard for Nightly Openbot, with read-only Team API integration and replaceable connectors.",
   "license": "MIT",
   "repository": {
     "type": "git",

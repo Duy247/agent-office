@@ -1,8 +1,8 @@
 <p align="center"><img src="docs/images/mark.svg" width="72" height="72" alt="Agent Office" /></p>
 
-<h1 align="center">Agent Office</h1>
+<h1 align="center">Agent Office for Nightly Openbot</h1>
 
-<p align="center">Build a 3D office in TypeScript and connect it to your agents.</p>
+<p align="center">A customizable, local 3D office dashboard for Nightly Openbot.</p>
 
 <p align="center">
   <a href="https://github.com/Duy247/agent-office/actions/workflows/ci.yml"><img src="https://github.com/Duy247/agent-office/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
@@ -22,12 +22,14 @@
 
 _The preview uses simulated agents and activity. No account is required to run it._
 
-Agent Office is a local 3D dashboard with a programmable scene and replaceable, read-only connectors. Design the space yourself while your agent platform continues to run the work.
+Agent Office is a local, read-only 3D dashboard built for [Nightly Openbot](https://github.com/nightly-labs/openbot). It displays your Openbot agents and their live activity through the Team API, while Openbot runs all tasks, conversations and providers. This is an independent community project and is not affiliated with Nightly Labs.
+
+Design the office in TypeScript, create your own assets and place them wherever you want. The included demo and replaceable connectors also let you develop without an Openbot account or adapt the office to other agent systems.
 
 - **Write the office.** Rooms, assets, desks, lights, camera and animation are ordinary TypeScript.
 - **Bring your assets.** Build procedural Three.js objects or import local GLB, glTF and OBJ files.
 - **Keep live status.** Work, queues, questions, approvals, failures and stale connections appear in the scene.
-- **Choose the source.** Start with demo data, connect Openbot, read a JSON feed or write an adapter.
+- **Connect Nightly Openbot.** Use its Team API for live status, or start with demo data, a JSON feed or your own adapter.
 - **Grow the room.** Stable desk slots and separate group rooms scale the layout with your roster.
 - **Keep it local.** Loopback serving, protected credentials, filtered browser data and clean exports.
 
@@ -69,12 +71,12 @@ Register procedural Three.js assets or local GLB/glTF/OBJ models in that same fi
 
 See [the authoring guide](docs/AUTHORING.md) for custom assets, groups, room layout, lights, animation, walking routes and model import details.
 
-## Connect your agents
+## Connect Nightly Openbot
 
 Adapters are selected in **office.config.local.json**, which is ignored by Git and excluded from source exports:
 
 - **demo**: simulated activity; no source required.
-- **openbot**: separate authenticated Team API session, explicit server address or Windows auto-discovery, named credential profiles and capability negotiation.
+- **openbot**: Nightly Openbot's Team API, with a separate authenticated session, explicit server address or Windows auto-discovery, named credential profiles and capability negotiation.
 - **json-file**: another local program writes the normalized agent/group schema.
 - **your adapter**: implement `OfficeConnector` and register its factory; no renderer changes required.
 
