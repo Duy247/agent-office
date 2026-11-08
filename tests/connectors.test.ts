@@ -85,6 +85,8 @@ test('all connector outputs cross a whitelist that strips credentials, chat and 
   const result = publicSnapshot({
     connection: 'connected',
     sessionToken: 'PRIVATE',
+    accountToken: 'PRIVATE',
+    clientPrivateKey: 'PRIVATE',
     conversation: ['PRIVATE'],
     raw: { token: 'PRIVATE' },
     agents: [

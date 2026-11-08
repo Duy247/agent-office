@@ -8,6 +8,7 @@ import WebSocket from 'ws';
 import { readSettings, updateLocalConfig } from './config.ts';
 import { loadProtectedSession, saveProtectedSession } from './session-store.ts';
 import { serverDefinitions } from './office-servers.ts';
+import type { RemoteSession } from './remote-account.ts';
 const settings = await readSettings();
 const defaultOptions = settings.connector?.options ?? {};
 const cliValue = (name: string) => {
@@ -208,9 +209,60 @@ async function connect() {
     rl.close();
   }
 }
+async function completeRemoteSetup(remote: RemoteSession) {
+  const { RemotePeer } = await import('./remote-peer.ts');
+  const peer = new RemotePeer(remote);
+  peer.on('stage', (stage) => output('Remote step: ' + stage));
+  try {
+    output('Verifying the separate remote session and read-only Team API connection.');
+    await peer.connect(AbortSignal.timeout(45_000));
+    negotiate(await peer.request('/v1/compatibility'));
+    const identity = await peer.request('/v1/identity');
+    if (identity.serverId !== remote.serverId || identity.fingerprint !== remote.fingerprint)
+      throw new Error('Remote identity verification failed.');
+    const roster = await peer.request('/v1/agents');
+    const layout = await peer.request('/v1/sidebar-layout');
+    if (!Array.isArray(roster) || !layout)
+      throw new Error('Remote roster or layout is unavailable.');
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        peer.off('event', receive);
+        reject(new Error('Remote runtime snapshot did not arrive.'));
+      }, 12_000);
+      const receive = (event: any) => {
+        if (event?.type === 'runtime-snapshot') {
+          clearTimeout(timer);
+          peer.off('event', receive);
+          resolve();
+        }
+      };
+      peer.on('event', receive);
+      peer.requestSnapshot();
+    });
+    await saveSession(remote);
+    defaultOptions.transport = 'remote';
+    defaultOptions.hostId = remote.serverId;
+    delete defaultOptions.baseUrl;
+    await updateLocalConfig(
+      registrationPatch ?? { connector: { type: 'openbot', options: defaultOptions } },
+    );
+    output(`Remote Team API verified: ${roster.length} agents; runtime snapshot received.`);
+    output('Dashboard remote account session saved in protected OS credential storage.');
+    output(
+      'The separate dashboard account session is retained for reconnection. No provider credentials are used.',
+    );
+    return;
+  } finally {
+    peer.close();
+    // Keep this dedicated, protected setup session reusable after a transport failure.
+    await saveSession(remote);
+  }
+}
+
 async function accountConnect() {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   let accountToken: string | undefined;
+  let retainedAccount = false;
   const accountPaths = new Set([
     '/v1/auth/email/start',
     '/v1/auth/email/verify',
@@ -241,6 +293,13 @@ async function accountConnect() {
     return response.status === 204 ? {} : ((await response.json()) as any);
   }
   try {
+    if (process.argv.includes('--resume')) {
+      const saved = await loadSession();
+      if (saved.authKind !== 'remote')
+        throw new Error('No protected remote setup session is available.');
+      await completeRemoteSetup(saved);
+      return;
+    }
     const host = await discover();
     console.log('Sign in as the owner/member of the local Openbot server.');
     console.log(
@@ -258,6 +317,24 @@ async function accountConnect() {
     if (typeof signedIn.sessionToken !== 'string')
       throw new Error('Account sign-in returned no session.');
     accountToken = signedIn.sessionToken;
+    if (defaultOptions.transport === 'remote') {
+      const remote = {
+        authKind: 'remote' as const,
+        serverId: host.identity.serverId,
+        fingerprint: host.identity.fingerprint,
+        hostPublicKey: host.identity.publicKey,
+        accountApiUrl:
+          typeof defaultOptions.accountApiUrl === 'string'
+            ? defaultOptions.accountApiUrl
+            : 'https://api.openbot.run',
+        accountToken: accountToken!,
+      };
+      await saveSession(remote);
+      retainedAccount = true;
+      output('Separate dashboard account session saved with Windows protection for setup retries.');
+      await completeRemoteSetup(remote);
+      return;
+    }
     const ticket = await accountRequest('/v1/team-auth/ticket', {
       serverId: host.identity.serverId,
     });
@@ -285,7 +362,7 @@ async function accountConnect() {
     output('Dashboard Team API session saved in protected OS credential storage.');
     output('Account sign-in token is not stored. Only the local Team API session is saved.');
   } finally {
-    if (accountToken) {
+    if (accountToken && !retainedAccount) {
       try {
         await accountRequest('/v1/auth/logout');
         output('Temporary account sign-in session closed.');

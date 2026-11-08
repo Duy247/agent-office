@@ -7,6 +7,10 @@ import type { OfficeConnector } from './types.ts';
 export function openbotConnector(options: Record<string, unknown>): OfficeConnector {
   return {
     async start({ signal, config, emit, saveAppearance }) {
+      if (options.transport === 'remote') {
+        const { remoteConnector } = await import('./openbot-remote.ts');
+        return remoteConnector(options).start({ signal, config, emit, saveAppearance });
+      }
       const office = new OfficeStore(config);
       let ws: WebSocket | undefined;
       const publish = () =>

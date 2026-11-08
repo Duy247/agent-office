@@ -20,6 +20,12 @@ Run npm run typecheck, npm test and npm run build. Set OFFICE_LIVE_TEST=1 while 
 
 Browser checks cover the built office, custom code-created asset, local GLB loading, editing preview, source labels, agent selection and live source continuity. Private installation-specific connection evidence and screenshots are deliberately excluded from the template export.
 
+## Secondary-server remote connection
+
+Openbot 0.65.0 was tested with an additional desktop-created server whose owner account was rejected by local HTTP authentication. The remote-session transport completed account membership verification, signed DTLS-bound authentication, negotiated Team API reads, agent roster/sidebar discovery and a live runtime snapshot. The office displayed the separate server's existing agent and its own boss configuration. The primary local HTTP connection retained its roster and original boss. Restarting the dashboard connector restored the remote session without another email code, and the published HTTPS dashboard showed the selected secondary server. All 80 Windows tests passed with live HTTP checks enabled; type, format, documentation, build and template-package checks passed.
+
+An actual WebRTC peer test verifies mutual signatures, RPC reads, runtime events and offer-before-ICE ordering. Additional tests reject altered proof bindings, untrusted hosts, unsafe Signal addresses, work-changing requests, unauthorized account operations and malformed/oversized/noncontiguous frames. Protected setup credentials permit retries without another email code; tokens and raw payloads remain outside browser responses and logs.
+
 ## Team sidebar
 
 Server switching adds a GET-only server catalog and server-specific state/event subscriptions. Tests cover shared feeds, independent viewers, identical agent IDs on different servers, separate credentials/protocol versions, rejected server IDs/endpoints/profiles, isolated failures and sign-in states, idle feed shutdown, late-event rejection, and concurrent appearance persistence. Browser fixtures cover switching from an agent inspector, rapid switching, failed sign-in, refresh persistence and phone layout. The installed Openbot 0.65.0 default connection was checked live; additional authenticated real servers were not available during validation. All 74 Windows tests passed with live HTTP checks enabled.

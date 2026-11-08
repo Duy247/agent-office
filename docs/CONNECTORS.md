@@ -49,7 +49,25 @@ When supported, it also reads channel summaries through GET /v1/channels and obs
 
 The sidebar's Server menu lists locally configured connections. Each browser chooses its own server; the selection stays in its page URL across refreshes. Switching clears agent selection and the scene before subscribing to the selected server. It does not follow Openbot's desktop server menu or change any Openbot setting.
 
-Known limitation in Openbot 0.65.0: the owner account of an additional server created inside the desktop app can receive HTTP 400, "This OpenBot account is not a member of the team", from local `/v1/auth/account`, even while the Members screen correctly shows Owner. These child servers retain an internal password owner, which their account-directory synchronization deliberately preserves. The current connector uses local HTTP account authentication; it does not yet implement Openbot's remote-session/WebRTC connection flow. Repeating email sign-in does not resolve this case. The primary-server connection and separately authenticated compatible servers remain usable. No internal owner secret is read as a workaround.
+For additional servers created inside Openbot, use the remote-session transport. Openbot 0.65.0 keeps internal owner credentials on these servers, so local `/v1/auth/account` can return HTTP 400 even when the Members screen shows Owner. The remote transport authenticates your account membership through Openbot's supported session, Signal and WebRTC flow.
+
+```sh
+npm run connect -- --server http://127.0.0.1:9001 --transport remote --profile second-office --save-server second --name "Second office"
+```
+
+Replace the example port with that server's current local Team API port. This initial read pins the server ID, public key and fingerprint. Setup verifies account membership, mutual signed proofs bound to both DTLS fingerprints, protocol capabilities, roster, sidebar layout and a runtime snapshot before selecting the connection. Afterward, it uses the saved server ID and encrypted remote connection; the local port can change without editing configuration.
+
+Remote connections retain a separate dashboard account session and remote session ID in protected OS credential storage. This account session renews short-lived connection tickets; it is never sent to the dashboard browser or written to configuration/logs. The local HTTP transport continues to close its temporary account sign-in session. No Openbot saved credentials or provider tokens are read.
+
+If remote setup fails after sign-in, its dedicated protected session stays available for a retry without another email code:
+
+```sh
+npm run connect -- --resume --transport remote --profile second-office --save-server second --name "Second office"
+```
+
+A remote profile's saved options are `transport: "remote"`, `profile`, and `hostId`, with an optional `accountApiUrl`. Setup writes these automatically and preserves that server's boss and branding. Restart the dashboard connector after successful setup. Revoke the dedicated dashboard session through Openbot's account device/session controls to retire access; renewing expired account credentials requires email sign-in again.
+
+The Node connector maintains the data connection; browsers receive the same filtered office snapshots as the local transport. The remote transport allows only the existing office-read routes and authentication/session setup. It requests runtime snapshots and acknowledges ordered events, without subscribing to conversation threads, downloading chat history, uploading files, or sending work commands. Metadata emitted by the host is discarded unless needed for normalized office state. Connections verify the pinned host key on each reconnect, retain stale state on failure, replace ended remote sessions, and reconnect before TURN credentials expire. WebRTC runs in Node without installing another browser or controlling your desktop.
 
 Keep the current connection as the default. To connect and register an additional server, run this locally with its actual Team API address:
 

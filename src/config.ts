@@ -55,6 +55,14 @@ export async function readSettings(root = projectRoot, includeCLI = true) {
       ...config.connector,
       options: { ...config.connector?.options, profile: arg('--profile') },
     };
+  if (arg('--transport')) {
+    if (!['local', 'remote'].includes(arg('--transport')!))
+      throw new Error('Transport must be local or remote.');
+    config.connector = {
+      ...config.connector,
+      options: { ...config.connector?.options, transport: arg('--transport') },
+    };
+  }
   config.boss = resolveBoss(config.boss);
   return config;
 }

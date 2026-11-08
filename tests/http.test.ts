@@ -40,6 +40,8 @@ test(
       assert.ok(Object.keys(agent).every((k) => allowed.includes(k)));
     for (const field of [
       'sessionToken',
+      'accountToken',
+      'clientPrivateKey',
       'authorization',
       'latestMessages',
       'providerSettings',
