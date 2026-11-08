@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/images/mark.svg" width="72" height="72" alt="Agent Office" /></p>
 
-<h1 align="center">Agent Office for Nightly Openbot</h1>
+<h1 align="center">Virtual Office for Nightly Openbot</h1>
 
 <p align="center">A customizable, local 3D office dashboard for Nightly Openbot.</p>
 
@@ -18,11 +18,11 @@
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
-![Agent Office demo scene](docs/images/office-demo.png)
+![Virtual Office demo scene](docs/images/office-demo.png)
 
 _The preview uses simulated agents and activity. No account is required to run it._
 
-Agent Office is a local, read-only 3D dashboard built for [Nightly Openbot](https://github.com/nightly-labs/openbot). It displays your Openbot agents and their live activity through the Team API, while Openbot runs all tasks, conversations and providers. This is an independent community project and is not affiliated with Nightly Labs.
+OpenBot Virtual Office is a local, read-only 3D dashboard built for [Nightly Openbot](https://github.com/nightly-labs/openbot). It displays your Openbot agents and their live activity through the Team API, while Openbot runs all tasks, conversations and providers. This is an independent community project and is not affiliated with Nightly Labs.
 
 Design the office in TypeScript, create your own assets and place them wherever you want. The included demo and replaceable connectors also let you develop without an Openbot account or adapt the office to other agent systems.
 
