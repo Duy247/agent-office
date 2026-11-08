@@ -10,6 +10,15 @@ test(
     const base = 'http://127.0.0.1:4318';
     const response = await fetch(base + '/api/state');
     assert.equal(response.status, 200);
+    const catalog = await (await fetch(base + '/api/servers')).json();
+    assert.equal(catalog.defaultId, 'default');
+    assert.ok(catalog.servers.length > 0);
+    for (const server of catalog.servers)
+      assert.deepEqual(Object.keys(server).sort(), ['id', 'name']);
+    assert.equal((await fetch(base + '/api/state?server=not-configured')).status, 404);
+    assert.equal((await fetch(base + '/api/events?server=not-configured')).status, 404);
+    assert.equal((await fetch(base + '/api/state?server=a&server=b')).status, 400);
+    assert.equal((await fetch(base + '/api/servers', { method: 'POST' })).status, 405);
     const state = await response.json();
     assert.ok(Array.isArray(state.agents));
     const allowed = [

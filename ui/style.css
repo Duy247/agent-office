@@ -128,6 +128,36 @@ a {
   justify-content: space-between;
   gap: 12px;
 }
+.server-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.server-picker label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.server-picker select {
+  min-width: 0;
+  flex: 1;
+  font: inherit;
+  font-size: 14px;
+  color: #29322c;
+  background: #f5f7f0;
+  border: 1px solid #cdd7cb;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.server-picker select:focus-visible {
+  outline: 2px solid #46764d;
+  outline-offset: 3px;
+}
+.server-error {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a14032;
+}
 .heading {
   font-size: 21px;
   line-height: 1.3;

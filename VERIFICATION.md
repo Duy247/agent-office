@@ -22,6 +22,8 @@ Browser checks cover the built office, custom code-created asset, local GLB load
 
 ## Team sidebar
 
+Server switching adds a GET-only server catalog and server-specific state/event subscriptions. Tests cover shared feeds, independent viewers, identical agent IDs on different servers, separate credentials/protocol versions, rejected server IDs/endpoints/profiles, isolated failures and sign-in states, idle feed shutdown, late-event rejection, and concurrent appearance persistence. Browser fixtures cover switching from an agent inspector, rapid switching, failed sign-in, refresh persistence and phone layout. The installed Openbot 0.65.0 default connection was checked live; additional authenticated real servers were not available during validation. All 74 Windows tests passed with live HTTP checks enabled.
+
 The sidebar uses the existing filtered snapshot and event stream. It shows reported activity, queue counts, provider/model, office area, channel membership and last state change. Queue titles and conversation content remain in Openbot. Office area identifies the agent's group, not its current animated position. Stale connections preserve the last reported states.
 
 Windows browser checks covered the live roster, character portraits, selection, camera focus, filtering, attention states, channel membership, changing snapshots, selected-agent removal, empty and stale states, and a 390-pixel phone layout. Automated tests cover filter boundaries, attention sorting, missing activity/timestamps and current group/channel membership. The user also confirmed the earlier live channel meeting behavior in Openbot.

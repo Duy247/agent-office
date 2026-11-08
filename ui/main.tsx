@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { OfficeSnapshot } from '../src/shared.ts';
+import type { OfficeSnapshot, OfficeServer } from '../src/shared.ts';
 import './style.css';
 import { createOffice3D } from './office3d.ts';
 import { Dashboard } from './dashboard.tsx';
@@ -71,26 +71,32 @@ function OfficeCanvas({
   );
 }
 const MemoOfficeCanvas = React.memo(OfficeCanvas);
+const initialServer = new URL(location.href).searchParams.get('server') || 'default';
 function App() {
-  const [state, setState] = useState(blank),
+  const [serverId, setServerId] = useState(initialServer),
+    [servers, setServers] = useState<OfficeServer[]>([]),
+    [serverError, setServerError] = useState(''),
+    [state, setState] = useState(blank),
     [selected, setSelected] = useState<string | null>(null),
     [quiet, setQuiet] = useState(false),
     [showTeam, setShowTeam] = useState(true),
     [viewVersion, setViewVersion] = useState(0),
     [focusRequest, setFocusRequest] = useState<{ id: string; version: number } | null>(null);
   useEffect(() => {
-    const stream = new EventSource('/api/events');
+    const stream = new EventSource('/api/events?server=' + encodeURIComponent(serverId));
+    let active = true;
     let previous = '',
       reconnecting = false;
     stream.onmessage = (e) => {
       try {
-        if (!reconnecting && previous === e.data) return;
+        if (!active || (!reconnecting && previous === e.data)) return;
         setState(JSON.parse(e.data));
         previous = e.data;
         reconnecting = false;
       } catch {}
     };
     stream.onerror = () => {
+      if (!active) return;
       reconnecting = true;
       setState((s) => ({
         ...s,
@@ -98,7 +104,39 @@ function App() {
         message: 'Dashboard connection lost · retrying',
       }));
     };
-    return () => stream.close();
+    return () => {
+      active = false;
+      stream.close();
+    };
+  }, [serverId]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/servers', { signal: controller.signal, cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Server list unavailable.');
+        const catalog = await response.json();
+        if (!Array.isArray(catalog.servers)) throw new Error('Invalid server list.');
+        if (controller.signal.aborted) return;
+        setServers(catalog.servers);
+        if (!catalog.servers.some((s: OfficeServer) => s.id === initialServer))
+          setServerError('This server is not configured. Select an available server.');
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setServerError('Could not load server list. Reload to try again.');
+      });
+    return () => controller.abort();
+  }, []);
+  const switchServer = useCallback((id: string) => {
+    setSelected(null);
+    setFocusRequest(null);
+    setState(blank);
+    setServerError('');
+    setServerId(id);
+    const url = new URL(location.href);
+    if (id === 'default') url.searchParams.delete('server');
+    else url.searchParams.set('server', id);
+    history.replaceState(null, '', url);
   }, []);
   const sceneState = useMemo(
     () => ({
@@ -123,6 +161,7 @@ function App() {
     <main className={'office-screen' + (showTeam ? '' : ' panel-hidden')} aria-label="Office">
       <section className="office-stage" aria-label="Virtual office">
         <MemoOfficeCanvas
+          key={serverId}
           state={sceneState}
           selected={selected}
           onSelect={selectAgent}
@@ -172,6 +211,11 @@ function App() {
       </section>
       {showTeam && (
         <Dashboard
+          key={serverId}
+          servers={servers}
+          serverId={serverId}
+          serverError={serverError}
+          onServerChange={switchServer}
           state={state}
           selected={selected}
           onSelect={selectAgent}

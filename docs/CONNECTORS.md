@@ -45,6 +45,42 @@ The adapter negotiates capabilities, reads roster/groups, requests runtime snaps
 
 When supported, it also reads channel summaries through GET /v1/channels and observes channels-changed events. Only channel ID, name, visible member IDs and active-work state are exported; preview text, instructions, messages and execution thread IDs are discarded. This drives [conference meetings](ACTIVITIES.md) without reading transcripts or writing channel commands. Channel capability absence or a forbidden/missing optional summary endpoint leaves the normal agent feed working.
 
+### Switch servers
+
+The sidebar's Server menu lists locally configured connections. Each browser chooses its own server; the selection stays in its page URL across refreshes. Switching clears agent selection and the scene before subscribing to the selected server. It does not follow Openbot's desktop server menu or change any Openbot setting.
+
+Keep the current connection as the default. To connect and register an additional server, run this locally with its actual Team API address:
+
+```sh
+npm run connect -- --server https://team.example.com --profile second-office --save-server second --name "Second office"
+```
+
+Complete the email sign-in, then restart the office dashboard and reload the page. Registration happens only after authentication succeeds and preserves the default connection. Use a separate profile for each server. An unavailable or expired session shows that server's connection state; it never falls back to another server or demo data. Renew an additional server's session with the same command and server ID.
+
+You can also edit `office.config.local.json` directly if the profiles are already connected:
+
+```json
+{
+  "serverName": "Main office",
+  "servers": [
+    {
+      "id": "second",
+      "name": "Second office",
+      "options": {
+        "baseUrl": "https://team.example.com",
+        "profile": "second-office"
+      }
+    }
+  ]
+}
+```
+
+This is a partial local override; keep existing connector and office settings. Up to 15 additional servers are supported. IDs must be unique, and `default` identifies the existing connection. Each additional server has separate character and desk assignments in the ignored `serverAppearance` settings, so identical agent IDs cannot share appearances across servers. Existing default assignments remain compatible.
+
+The browser receives only server IDs and display names from `GET /api/servers`. State and event requests select a configured ID with `?server=second`; arbitrary addresses and credentials are not accepted from the browser. Feed connections are shared between viewers of the same server and stop 30 seconds after their last viewer leaves. Source credentials remain in protected OS storage. All dashboard endpoints remain GET-only.
+
+If you expose the dashboard through a reverse proxy, its viewers can select any server in this catalog. Adding a server makes its filtered office data available through that same dashboard. The dashboard has no sign-in screen or per-viewer server access policy.
+
 ## JSON file
 
 ```json

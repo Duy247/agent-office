@@ -46,14 +46,46 @@ if (mode) {
             updatedAt: new Date().toISOString(),
           })),
   };
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = (input, options) => {
+    if (String(input) === '/api/servers')
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            defaultId: 'default',
+            servers: [
+              { id: 'default', name: 'Studio' },
+              { id: 'other', name: 'Other office' },
+              { id: 'locked', name: 'Needs sign-in' },
+            ],
+          }),
+          { headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+    return originalFetch(input, options);
+  };
   window.EventSource = class {
-    constructor() {
+    constructor(url) {
+      const server = new URL(url, location.href).searchParams.get('server');
+      const data =
+        server === 'locked'
+          ? { ...fixture, connection: 'sign-in-required', agents: [], groups: [], channels: [] }
+          : server === 'other'
+            ? {
+                ...fixture,
+                agents: [{ ...fixture.agents[0], name: 'Other server agent', character: 7 }],
+                groups: [],
+                channels: [],
+              }
+            : fixture;
       this.update = (e) => this.onmessage?.({ data: JSON.stringify(e.detail) });
       window.addEventListener('office-fixture-update', this.update);
-      setTimeout(() => this.onmessage?.({ data: JSON.stringify(fixture) }), 50);
+      setTimeout(() => this.onmessage?.({ data: JSON.stringify(data) }), 50);
+      this.late = () => this.onmessage?.({ data: JSON.stringify(data) });
     }
     close() {
       window.removeEventListener('office-fixture-update', this.update);
+      if (mode === 'servers') setTimeout(this.late, 100);
     }
   };
 }

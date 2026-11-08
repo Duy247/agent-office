@@ -9,7 +9,7 @@ import { mergeConfig, readSettings } from '../src/config.ts';
 import { profileName } from '../src/session-store.ts';
 import { teamEndpoint } from '../src/protocol.ts';
 import { createServer } from 'node:http';
-import { discover } from '../src/probe.ts';
+import { discover, request } from '../src/probe.ts';
 import { jsonFileConnector } from '../src/connectors/json-file.ts';
 
 test('a fresh clone defaults to demo without personal IDs or an Openbot connection', async () => {
@@ -148,6 +148,54 @@ test('an explicitly configured Team API negotiates without process discovery and
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+test('simultaneous servers keep negotiated protocol and authentication isolated', async () => {
+  const servers = [7, 9].map((version) =>
+    createServer((req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.url === '/v1/compatibility') {
+        res.end(
+          JSON.stringify({
+            protocol: { minimum: version, maximum: version },
+            capabilities: ['sidebar-layout', 'agent-runtime-snapshots'],
+          }),
+        );
+      } else if (req.url === '/v1/identity') {
+        assert.equal(req.headers['openbot-protocol-version'], String(version));
+        res.end(JSON.stringify({ serverId: 'server-' + version, fingerprint: 'fp-' + version }));
+      } else {
+        assert.equal(req.method, 'GET');
+        assert.equal(req.url, '/v1/agents');
+        assert.equal(req.headers['openbot-protocol-version'], String(version));
+        assert.equal(req.headers.authorization, 'Bearer test-token-' + version);
+        res.end(JSON.stringify([]));
+      }
+    }),
+  );
+  try {
+    await Promise.all(
+      servers.map((s) => new Promise<void>((resolve) => s.listen(0, '127.0.0.1', resolve))),
+    );
+    const hosts = await Promise.all(
+      servers.map((s) =>
+        discover(undefined, {
+          baseUrl: `http://127.0.0.1:${(s.address() as { port: number }).port}`,
+        }),
+      ),
+    );
+    await Promise.all(
+      hosts.map((h) =>
+        request(h.base, '/v1/agents', 'test-token-' + h.protocol, undefined, false, h.protocol),
+      ),
+    );
+    assert.deepEqual(
+      hosts.map((h) => h.protocol),
+      [7, 9],
+    );
+  } finally {
+    await Promise.all(servers.map((s) => new Promise<void>((resolve) => s.close(() => resolve()))));
+  }
+});
+
 test('JSON file feed preserves known state after malformed input and cancels cleanly', async () => {
   const root = await mkdtemp(join(tmpdir(), 'agent-office-feed-')),
     path = join(root, 'status.json');

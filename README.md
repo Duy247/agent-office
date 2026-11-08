@@ -32,6 +32,7 @@ Design the office in TypeScript, create your own assets and place them wherever 
 - **Visit the campus.** Idle agents roam the park, café, arcade and table tennis. Active shared channels bring their members into a conference pod and put the channel name on its screen. See [roaming and meetings](docs/ACTIVITIES.md).
 - **View the team.** The sidebar filters working, idle and attention states, shows queued counts and channel members, and opens agent details. Select a character or row, then choose Locate in office to focus the camera. On phones, the panel sits below the office. Use Team to hide or reopen it.
 - **Connect Nightly Openbot.** Use its Team API for live status, or start with demo data, a JSON feed or your own adapter.
+- **Switch servers.** Choose a saved connection in the sidebar. Each browser keeps its own selection, and each server keeps separate credentials and character assignments. See [server setup](docs/CONNECTORS.md#switch-servers).
 - **Grow the room.** Stable desk slots and separate group rooms scale the layout with your roster.
 - **Keep it local.** Loopback serving, protected credentials, filtered browser data and clean exports.
 

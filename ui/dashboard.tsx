@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { OfficeSnapshot } from '../src/shared.ts';
+import type { OfficeSnapshot, OfficeServer } from '../src/shared.ts';
 import { characterPortrait } from './characters.ts';
 import {
   activityText,
@@ -37,12 +37,20 @@ const Avatar = React.memo(function Avatar({
 
 export function Dashboard({
   state,
+  servers,
+  serverId,
+  serverError,
+  onServerChange,
   selected,
   onSelect,
   onClose,
   onLocate,
 }: {
   state: OfficeSnapshot;
+  servers: OfficeServer[];
+  serverId: string;
+  serverError: string;
+  onServerChange: (id: string) => void;
   selected: string | null;
   onSelect: (id: string | null) => void;
   onClose: () => void;
@@ -63,6 +71,32 @@ export function Dashboard({
   return (
     <aside id="agent-dashboard" className="dashboard" aria-label={agent ? 'Agent details' : 'Team'}>
       <header className="panel-head">
+        <div className="server-picker">
+          <label htmlFor="office-server">Server</label>
+          <select
+            id="office-server"
+            value={serverId}
+            onChange={(e) => onServerChange(e.target.value)}
+            disabled={!servers.length}
+          >
+            {!servers.some((s) => s.id === serverId) && (
+              <option value={serverId}>
+                {servers.length ? 'Server unavailable' : 'Loading servers'}
+              </option>
+            )}
+            {servers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {serverError && (
+          <p className="server-error" role="alert">
+            {serverError}
+          </p>
+        )}
+
         <div className="head-line">
           {agent ? (
             <button className="back-button" onClick={() => onSelect(null)}>
@@ -94,7 +128,9 @@ export function Dashboard({
         <p className="stale-note" role="status">
           {state.connection === 'connecting'
             ? 'Connecting to Openbot.'
-            : 'Connection interrupted. Showing last known state.'}
+            : state.connection === 'sign-in-required'
+              ? 'Sign-in required for this server. Connect it locally, then reload.'
+              : 'Connection interrupted. Showing last known state.'}
         </p>
       )}
       {agent ? (

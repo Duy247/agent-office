@@ -58,7 +58,13 @@ export async function readSettings(root = projectRoot, includeCLI = true) {
   config.boss = resolveBoss(config.boss);
   return config;
 }
-export async function updateLocalConfig(patch: any, root = projectRoot) {
+let configWrites = Promise.resolve();
+export function updateLocalConfig(patch: any, root = projectRoot) {
+  const next = configWrites.then(() => writeLocalConfig(patch, root));
+  configWrites = next.catch(() => {});
+  return next;
+}
+async function writeLocalConfig(patch: any, root: string) {
   let local = {};
   const path = join(root, 'office.config.local.json');
   try {

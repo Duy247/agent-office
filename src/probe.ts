@@ -7,8 +7,32 @@ import { pathToFileURL } from 'node:url';
 import WebSocket from 'ws';
 import { readSettings, updateLocalConfig } from './config.ts';
 import { loadProtectedSession, saveProtectedSession } from './session-store.ts';
+import { serverDefinitions } from './office-servers.ts';
 const settings = await readSettings();
 const defaultOptions = settings.connector?.options ?? {};
+const cliValue = (name: string) => {
+  const i = process.argv.indexOf(name);
+  return i < 0 ? undefined : process.argv[i + 1];
+};
+let registrationPatch: { servers: any[] } | undefined;
+if (process.argv.includes('--save-server')) {
+  const id = cliValue('--save-server');
+  if (!id || id === 'default' || !cliValue('--profile'))
+    throw new Error(
+      'Use --save-server with a new server ID and --profile with a separate credential profile.',
+    );
+  const saved = await readSettings(undefined, false);
+  const servers = [
+    ...(saved.servers ?? []).filter((s: any) => s.id !== id),
+    {
+      id,
+      name: cliValue('--name') ?? id,
+      options: defaultOptions,
+    },
+  ];
+  serverDefinitions({ ...saved, servers });
+  registrationPatch = { servers };
+}
 import {
   allowedRequest,
   capabilities,
@@ -60,6 +84,7 @@ async function request(
   token?: string,
   body?: unknown,
   authenticating = false,
+  protocolVersion = protocol,
 ): Promise<any> {
   const method = body === undefined ? 'GET' : 'POST';
   if (!allowedRequest(method, path, authenticating))
@@ -69,7 +94,7 @@ async function request(
     redirect: 'error',
     signal: AbortSignal.timeout(5000),
     headers: {
-      'OpenBot-Protocol-Version': String(protocol),
+      'OpenBot-Protocol-Version': String(protocolVersion),
       'OpenBot-App-Version': '0.1.0',
       'OpenBot-Capabilities': capabilities.join(','),
       ...(token ? { Authorization: 'Bearer ' + token } : {}),
@@ -102,8 +127,15 @@ async function discover(
   let incompatible: string | undefined;
   for (const base of endpoints) {
     try {
-      const support = await request(base, '/v1/compatibility');
-      const identity = await request(base, '/v1/identity');
+      const support = await request(base, '/v1/compatibility', undefined, undefined, false, 9);
+      let negotiated: number;
+      try {
+        negotiated = negotiate(support);
+      } catch (e) {
+        incompatible = e instanceof Error ? e.message : 'Unsupported Team API';
+        continue;
+      }
+      const identity = await request(base, '/v1/identity', undefined, undefined, false, negotiated);
       if (
         expected &&
         (identity.serverId !== expected.serverId || identity.fingerprint !== expected.fingerprint)
@@ -112,13 +144,8 @@ async function discover(
           throw new Error('Openbot server identity does not match this saved credential profile.');
         continue;
       }
-      try {
-        protocol = negotiate(support);
-      } catch (e) {
-        incompatible = e instanceof Error ? e.message : 'Unsupported Team API';
-        continue;
-      }
-      return { base, support, identity };
+      protocol = negotiated;
+      return { base, support, identity, protocol: negotiated };
     } catch (e) {
       if (explicit) throw e; /* Unrelated loopback listeners are not Team APIs. */
     }
@@ -164,6 +191,7 @@ async function connect() {
       sessionToken: auth.sessionToken,
       sessionExpiresAt: auth.sessionExpiresAt,
     });
+    if (registrationPatch) await updateLocalConfig(registrationPatch);
     output('A separate dashboard member session is saved in protected OS credential storage.');
     output('Openbot still owns all agents. Run Start connection proof.cmd next.');
   } finally {
@@ -241,7 +269,9 @@ async function accountConnect() {
       sessionExpiresAt: auth.sessionExpiresAt,
       authKind: 'account',
     });
-    await updateLocalConfig({ connector: { type: 'openbot', options: defaultOptions } });
+    await updateLocalConfig(
+      registrationPatch ?? { connector: { type: 'openbot', options: defaultOptions } },
+    );
     output('Dashboard Team API session saved in protected OS credential storage.');
     output('Account sign-in token is not stored. Only the local Team API session is saved.');
   } finally {

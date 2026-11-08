@@ -15,6 +15,10 @@ export interface OfficeAgent {
   character: number;
   desk?: { x: number; y: number };
 }
+export interface OfficeServer {
+  id: string;
+  name: string;
+}
 export interface OfficeSnapshot {
   channels?: OfficeChannel[];
   source?: { id: string; label: string; mode: 'demo' | 'live' };

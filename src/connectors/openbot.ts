@@ -21,7 +21,7 @@ export function openbotConnector(options: Record<string, unknown>): OfficeConnec
           const host = await discover(session, options);
           if (signal.aborted) break;
           const read = (path: string, body?: unknown) =>
-            request(host.base, path, session.sessionToken, body);
+            request(host.base, path, session.sessionToken, body, false, host.protocol);
           let alive = true,
             polling = false;
           async function refresh() {
