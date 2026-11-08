@@ -59,6 +59,7 @@ export function publicSnapshot(raw: any): OfficeSnapshot {
         ? { desk: { x: a.desk.x, y: a.desk.y } }
         : {}),
     }));
+  const visibleAgentIds = new Set<string>(agents.map((a: { id: string }) => a.id));
   const connection = ['connecting', 'connected', 'disconnected', 'sign-in-required'].includes(
     raw?.connection,
   )
@@ -71,6 +72,26 @@ export function publicSnapshot(raw: any): OfficeSnapshot {
     message: clean(raw?.message),
     agents,
     groups,
+    ...(Array.isArray(raw?.channels)
+      ? {
+          channels: raw.channels
+            .slice(0, 200)
+            .filter((c: any) => clean(c?.id))
+            .map((c: any) => ({
+              id: clean(c.id),
+              name: clean(c.name, 80) || 'Channel',
+              agentIds: [
+                ...new Set(
+                  (Array.isArray(c.agentIds) ? c.agentIds : [])
+                    .slice(0, 100)
+                    .filter((id: unknown) => typeof id === 'string' && visibleAgentIds.has(id)),
+                ),
+              ] as string[],
+              active: c.active === true,
+            }))
+            .filter((c: any) => c.agentIds.length >= 2),
+        }
+      : {}),
     recent: (Array.isArray(raw?.recent) ? raw.recent : [])
       .slice(0, 12)
       .filter((e: any) =>

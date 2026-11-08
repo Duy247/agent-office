@@ -16,6 +16,7 @@ export interface OfficeAgent {
   desk?: { x: number; y: number };
 }
 export interface OfficeSnapshot {
+  channels?: OfficeChannel[];
   source?: { id: string; label: string; mode: 'demo' | 'live' };
   connection: 'connecting' | 'connected' | 'disconnected' | 'sign-in-required';
   version: string | null;
@@ -25,6 +26,12 @@ export interface OfficeSnapshot {
   groups: { id: string; name: string }[];
   recent: { at: string; agentId: string; kind: string }[];
   config: { title: string; reducedMotion: boolean; logo?: OfficeLogo; boss?: BossProfile };
+}
+export interface OfficeChannel {
+  id: string;
+  name: string;
+  agentIds: string[];
+  active: boolean;
 }
 export interface BossProfile {
   name: string;

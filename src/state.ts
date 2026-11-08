@@ -28,6 +28,16 @@ export class OfficeStore {
   };
   config: any = {};
   private turns = new Map<string, string>();
+  private turnThreads = new Map<string, string>();
+  private channelSummaries:
+    | {
+        id: string;
+        name: string;
+        agentIds: string[];
+        reportedActive: boolean;
+        threads: { agentId: string; threadId: string }[];
+      }[]
+    | undefined;
   private tasks = new Map<string, { running: boolean; queued: number; failed: boolean }>();
   private queues = new Map<string, number>();
   private attention = new Map<string, { agentId: string; kind: OfficeState }>();
@@ -42,6 +52,7 @@ export class OfficeStore {
   }
   resetRuntime() {
     this.turns.clear();
+    this.turnThreads.clear();
     this.tasks.clear();
     this.queues.clear();
     this.attention.clear();
@@ -123,6 +134,28 @@ export class OfficeStore {
     }
     this.refresh();
   }
+  channels(values: any[]) {
+    this.channelSummaries = values
+      .filter((c) => typeof c?.id === 'string' && !c.archived)
+      .map((c) => ({
+        id: clean(c.id),
+        name: clean(c.name, 80) || 'Channel',
+        agentIds: [
+          ...new Set(
+            (Array.isArray(c.members) ? c.members : [])
+              .map((m: any) => m?.agentId)
+              .filter((id: unknown) => typeof id === 'string'),
+          ),
+        ] as string[],
+        reportedActive:
+          (typeof c.openTasks === 'number' && c.openTasks > 0) ||
+          (typeof c.activeTasks === 'number' && c.activeTasks > 0),
+        threads: (Array.isArray(c.threads) ? c.threads : [])
+          .filter((t: any) => typeof t?.agentId === 'string' && typeof t?.threadId === 'string')
+          .map((t: any) => ({ agentId: t.agentId, threadId: t.threadId })),
+      }));
+    this.refresh();
+  }
   event(e: any) {
     if (!e || typeof e.type !== 'string') return;
     const agentId = idOf(e),
@@ -133,8 +166,12 @@ export class OfficeStore {
         if (!s || !Array.isArray(s.activeTurns)) return;
         this.runtimeReady = true;
         this.turns.clear();
+        this.turnThreads.clear();
         for (const t of s.activeTurns)
-          if (typeof t.turnId === 'string') this.turns.set(t.turnId, idOf(t));
+          if (typeof t.turnId === 'string') {
+            this.turns.set(t.turnId, idOf(t));
+            if (typeof t.threadId === 'string') this.turnThreads.set(t.turnId, t.threadId);
+          }
         // An incomplete attention snapshot must not clear known pending requests.
         if (s.attentionComplete !== false) this.attention.clear();
         for (const [key, kind] of [
@@ -149,10 +186,13 @@ export class OfficeStore {
       }
       case 'turn-started':
         if (typeof e.turnId === 'string') this.turns.set(e.turnId, agentId);
+        if (typeof e.turnId === 'string' && typeof e.threadId === 'string')
+          this.turnThreads.set(e.turnId, e.threadId);
         this.failed.delete(agentId);
         break;
       case 'turn-completed':
         this.turns.delete(e.turnId);
+        this.turnThreads.delete(e.turnId);
         if (e.status === 'failed') this.failed.add(agentId);
         else this.failed.delete(agentId);
         break;
@@ -222,6 +262,29 @@ export class OfficeStore {
     }
   }
   private refresh() {
+    const knownAgents = new Set(this.state.agents.map((a) => a.id));
+    const activeThreads = new Map<string, Set<string>>();
+    for (const [turn, thread] of this.turnThreads) {
+      const id = this.turns.get(turn);
+      if (!id) continue;
+      let threads = activeThreads.get(id);
+      if (!threads) {
+        threads = new Set();
+        activeThreads.set(id, threads);
+      }
+      threads.add(thread);
+    }
+    if (this.channelSummaries)
+      this.state.channels = this.channelSummaries
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          agentIds: c.agentIds.filter((id) => knownAgents.has(id)),
+          active:
+            c.reportedActive ||
+            c.threads.some((t) => activeThreads.get(t.agentId)?.has(t.threadId)),
+        }))
+        .filter((c) => c.agentIds.length >= 2);
     const active = new Set(this.turns.values());
     for (const a of this.state.agents) {
       const task = this.tasks.get(a.id);

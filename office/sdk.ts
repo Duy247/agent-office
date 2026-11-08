@@ -146,6 +146,6 @@ export interface OfficeDefinition {
     plan: RoomPlan;
     from: Vec3;
     to: Vec3;
-    destination: 'desk' | 'lounge';
+    destination: 'desk' | 'lounge' | 'leisure' | 'meeting';
   }) => Vec3[];
 }

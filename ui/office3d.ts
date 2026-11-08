@@ -19,6 +19,10 @@ import { MODEL_SCALE } from '../office/constants.ts';
 import { optimizeCharacter } from '../office/optimize.ts';
 import { RenderBudget } from './render-budget.ts';
 import { readFurniturePack } from '../office/furniture-pack.ts';
+import { ActivityDirector, ambientBubble } from '../office/activities.ts';
+import type { ActivityGoal } from '../office/activities.ts';
+import { CampusRouter } from '../office/navigation.ts';
+import { setConferenceScreen } from '../office/conference-screen.ts';
 export {
   MODEL_SCALE,
   DESK_SURFACE,
@@ -55,6 +59,7 @@ type Actor = {
   plan: RoomPlan;
   workFacing: number;
   idleFacing: number;
+  goal?: ActivityGoal;
 };
 
 function label(value: string, width = 1.3, color = '#41564f', background?: string) {
@@ -146,6 +151,9 @@ export function createOffice3D(
     library = new Assets(),
     templates = library.templates;
   const rooms: RoomContext[] = [];
+  let plans: RoomPlan[] = [],
+    router: CampusRouter | undefined;
+  const director = new ActivityDirector();
   const raycaster = new THREE.Raycaster(),
     pointer = new THREE.Vector2(),
     media = matchMedia('(prefers-reduced-motion: reduce)');
@@ -344,7 +352,8 @@ export function createOffice3D(
     }
     actors.clear();
     rooms.length = 0;
-    const plans = design.layout(snapshot!);
+    plans = design.layout(snapshot!);
+    router = new CampusRouter(plans);
     for (const plan of plans) {
       const room = new THREE.Group();
       room.position.set(plan.offsetX, 0, plan.offsetZ);
@@ -358,7 +367,7 @@ export function createOffice3D(
       }) satisfies RoomContext;
       rooms.push(ctx);
       design.buildRoom(ctx);
-      if (!plan.agents.length && plan.kind !== 'boss') {
+      if (!plan.agents.length && !plan.kind) {
         const empty = label('Create agents in Openbot.', 3.5);
         empty.position.set((plan.minX + plan.maxX) / 2, 0.7, (plan.minZ + plan.maxZ) / 2);
         room.add(empty);
@@ -465,6 +474,7 @@ export function createOffice3D(
       snapshot.groups,
       snapshot.config.logo,
       snapshot.config.boss,
+      snapshot.channels?.map((c) => [c.id, c.agentIds]),
       snapshot.agents.map((a) => [a.id, a.name, a.character, a.groupId, a.deskIndex, a.desk]),
     ]);
     const visual = JSON.stringify([
@@ -472,6 +482,7 @@ export function createOffice3D(
       snapshot.config.reducedMotion,
       selected,
       snapshot.agents.map((a) => [a.state, a.queueCount, a.activity]),
+      snapshot.channels,
     ]);
     if (next === signature && visual === visualSignature) return;
     if (next !== signature) {
@@ -505,44 +516,78 @@ export function createOffice3D(
                   : '';
       actor.badge.visible = !!text;
       if (text) setBadge(actor.badge, text, colors[a.state]);
-      const key = a.state === 'idle' ? 'lounge' : 'desk';
-      if (key !== actor.targetKey) {
-        actor.targetKey = key;
-        const end = key === 'lounge' ? actor.seat : actor.desk;
-        if (actor.person.root.position.distanceTo(end) < 0.05) actor.path = [];
-        else if (design.route) {
-          actor.path = design
-            .route({
-              agent: a,
-              plan: actor.plan,
-              from: actor.person.root.position.toArray() as unknown as Vec3,
-              to: end.toArray() as unknown as Vec3,
-              destination: key,
-            })
-            .map((p) => new THREE.Vector3(...p));
-          actor.path.push(end.clone());
-        } else {
-          const start = actor.person.root.position;
-          const exitZ = start.z + 0.8,
-            entryZ = end.z + 0.8;
-          actor.path = [
-            new THREE.Vector3(start.x + 0.55, 0, start.z),
-            new THREE.Vector3(start.x + 0.55, 0, exitZ),
-            new THREE.Vector3(-1.1, 0, exitZ),
-            new THREE.Vector3(-1.1, 0, entryZ),
-            new THREE.Vector3(end.x, 0, entryZ),
-            end.clone(),
-          ];
-        }
-        if (snapshot.config.reducedMotion || media.matches || snapshot.connection !== 'connected') {
-          actor.person.root.position.copy(end);
-          actor.path = [];
-        }
-      }
     }
+    applyActivityGoals(0, true);
     visualSignature = visual;
     renderer.shadowMap.needsUpdate = true;
     invalidate();
+  }
+  function goalPoint(actor: Actor, goal: ActivityGoal, approach = false) {
+    if (goal.kind === 'desk')
+      return actor.desk
+        .clone()
+        .add(approach ? new THREE.Vector3(0.65, 0, 0.7) : new THREE.Vector3());
+    if (goal.kind === 'lounge')
+      return actor.seat.clone().add(approach ? new THREE.Vector3(0, 0, 0.75) : new THREE.Vector3());
+    const host = plans.find((p) => p.id === goal.roomId)!;
+    const point = approach ? (goal.approach ?? goal) : goal;
+    return new THREE.Vector3(
+      point.x + host.offsetX - actor.plan.offsetX,
+      approach ? 0 : (goal.y ?? 0),
+      point.z + host.offsetZ - actor.plan.offsetZ,
+    );
+  }
+  function applyActivityGoals(delta = 0, force = false) {
+    if (!snapshot || snapshot.connection !== 'connected') return;
+    const goals = director.update(snapshot, plans, delta, force);
+    for (const ctx of rooms) setConferenceScreen(ctx, director.meetings.get(ctx.plan.id)?.name);
+    for (const actor of actors.values()) {
+      const goal = goals.get(actor.agent.id);
+      if (!goal) continue;
+      const key = goal.roomId + ':' + goal.id;
+      if (key === actor.targetKey) continue;
+      const end = goalPoint(actor, goal),
+        start = actor.person.root.position;
+      let path: THREE.Vector3[] = [];
+      const reduced = snapshot.config.reducedMotion || media.matches;
+      if (start.distanceTo(end) > 0.05 && !reduced) {
+        if (design.route) {
+          path = design
+            .route({
+              agent: actor.agent,
+              plan: actor.plan,
+              from: start.toArray() as unknown as Vec3,
+              to: end.toArray() as unknown as Vec3,
+              destination: goal.kind,
+            })
+            .map((p) => new THREE.Vector3(...p));
+          path.push(end.clone());
+        } else if (actor.plan.park && router) {
+          const startApproach =
+            !actor.path.length && actor.goal?.seated
+              ? goalPoint(actor, actor.goal, true)
+              : start.clone();
+          const endApproach = goal.seated ? goalPoint(actor, goal, true) : end.clone();
+          const world = (v: THREE.Vector3) => ({
+            x: v.x + actor.plan.offsetX,
+            z: v.z + actor.plan.offsetZ,
+          });
+          const route = router.route(world(startApproach), world(endApproach), goal.roomId);
+          if (!route) continue;
+          if (startApproach.distanceTo(start) > 0.05) path.push(startApproach);
+          path.push(
+            ...route.map(
+              (p) => new THREE.Vector3(p.x - actor.plan.offsetX, 0, p.z - actor.plan.offsetZ),
+            ),
+            end.clone(),
+          );
+        } else path = [new THREE.Vector3(start.x, 0, end.z), end.clone()];
+      }
+      actor.goal = goal;
+      actor.targetKey = key;
+      actor.path = path;
+      if (reduced || start.distanceTo(end) <= 0.05) actor.person.root.position.copy(end);
+    }
   }
   const moveDelta = new THREE.Vector3();
   function draw(time: number) {
@@ -560,6 +605,7 @@ export function createOffice3D(
     if (!reduced) animationElapsed += dt;
     controls.enableDamping = !reduced;
     controls.update();
+    if (!reduced) applyActivityGoals(dt);
     for (const actor of actors.values()) {
       const moving = actor.path.length > 0;
       if (!reduced && moving) {
@@ -579,11 +625,38 @@ export function createOffice3D(
         actor.person.root.position.copy(actor.path[actor.path.length - 1]);
         actor.path = [];
       }
-      const seated = !actor.path.length;
-      actor.person.pose(seated, actor.agent.state === 'working' && seated);
-      if (seated)
+      const seated = !actor.path.length && (actor.goal?.seated ?? true);
+      const usingHands =
+        (actor.agent.state === 'working' && (!actor.goal || actor.goal.kind === 'desk')) ||
+        (actor.agent.state === 'idle' && !!actor.goal?.id.startsWith('arcade-'));
+      actor.person.pose(seated, usingHands && !actor.path.length);
+      if (!reduced && actor.path.length) {
+        const stride = Math.sin(animationElapsed * 8) * 0.38;
+        actor.person.legs.forEach((leg, i) => (leg.pivot.rotation.x = i ? -stride : stride));
+        actor.person.arms.forEach((arm, i) => (arm.rotation.x = i ? stride : -stride));
+      }
+      if (!actor.path.length && actor.goal)
         actor.person.root.rotation.y =
-          actor.agent.state === 'idle' ? actor.idleFacing : actor.workFacing;
+          actor.goal.kind === 'desk'
+            ? actor.workFacing
+            : actor.goal.kind === 'lounge'
+              ? actor.idleFacing
+              : actor.goal.facing;
+      setActivityBubble(
+        actor.bubble,
+        workingBubbleText(actor.agent, snapshot!.connection) ??
+          (!reduced
+            ? ambientBubble(
+                actor.agent,
+                actor.goal,
+                animationElapsed,
+                !!actor.path.length,
+                snapshot!.connection,
+              )
+            : null),
+        actor.agent.state === 'idle',
+      );
+
       if (!reduced) {
         actor.person.body.position.y += moving
           ? Math.sin(time / 95) * 0.025

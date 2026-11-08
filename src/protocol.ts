@@ -4,6 +4,8 @@ export const capabilities = [
   'agent-tasks-v1',
   'agent-activity',
   'open-providers-v1',
+  'channel-chats-v1',
+  'channel-attention-v1',
 ];
 export function sessionExpired(expiresAt: unknown, now = Date.now()) {
   return (
@@ -62,7 +64,13 @@ export function invitation(value: string) {
 export function allowedRequest(method: string, path: string, authenticating = false) {
   if (
     method === 'GET' &&
-    ['/v1/compatibility', '/v1/identity', '/v1/agents', '/v1/sidebar-layout'].includes(path)
+    [
+      '/v1/compatibility',
+      '/v1/identity',
+      '/v1/agents',
+      '/v1/sidebar-layout',
+      '/v1/channels',
+    ].includes(path)
   )
     return true;
   if (method === 'GET' && /^\/v1\/agents\/[a-zA-Z0-9_-]{1,128}\/queue$/.test(path)) return true;

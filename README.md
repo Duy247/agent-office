@@ -28,7 +28,8 @@ Design the office in TypeScript, create your own assets and place them wherever 
 
 - **Write the office.** Rooms, assets, desks, lights, camera and animation are ordinary TypeScript.
 - **Bring your assets.** Build procedural Three.js objects or import local GLB, glTF and OBJ files.
-- **Keep live status.** Work, queues, questions, approvals, failures and stale connections appear in the scene. Working agents have head-level activity bubbles; they disappear for every other state and on disconnection. Bubbles use reported activity, with a plain "Working" fallback when finer detail is unavailable.
+- **Keep live status.** Work, queues, questions, approvals, failures and stale connections appear in the scene. Working bubbles use reported activity, with a plain "Working" fallback when finer detail is unavailable. Separate idle bubbles are decorative cues and make no AI calls.
+- **Visit the campus.** Idle agents roam the park, café, arcade and table tennis. Active shared channels bring their members into a conference pod and put the channel name on its screen. See [roaming and meetings](docs/ACTIVITIES.md).
 - **Connect Nightly Openbot.** Use its Team API for live status, or start with demo data, a JSON feed or your own adapter.
 - **Grow the room.** Stable desk slots and separate group rooms scale the layout with your roster.
 - **Keep it local.** Loopback serving, protected credentials, filtered browser data and clean exports.

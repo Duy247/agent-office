@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Park yard, reserved leisure destinations, occasional decorative idle bubbles, and furniture-aware roaming.
+- Read-only shared-channel activity, expandable conference seating, channel-name screens and cross-group footbridges.
 - Batched static scenery and articulated character sections, preserving geometry and colours.
 - Demand rendering for paused/stale views, hidden-tab suspension, adaptive pixel ratio and fewer redundant live-state updates.
 - Build-time furniture pack, deferred optional parsers, Brotli/gzip delivery and immutable hashed asset caching.

@@ -3,6 +3,8 @@ import type { RoomContext } from '../sdk.ts';
 import { dressCampus } from './campus.ts';
 import { lettering } from '../text.ts';
 import { batchStaticMeshes } from '../optimize.ts';
+import { buildPark } from './park.ts';
+import { buildConferenceScreen } from '../conference-screen.ts';
 
 /** Replace this preset or call it and add/move objects afterward. */
 export function buildCampusRoom(ctx: RoomContext, options = { batch: true }) {
@@ -22,6 +24,8 @@ export function buildCampusRoom(ctx: RoomContext, options = { batch: true }) {
     new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: '#d3ddda' })),
   );
   const pod = dressCampus(room, plan, model);
+  buildPark(ctx);
+  buildConferenceScreen(ctx);
   const plate = new THREE.Mesh(
     new THREE.PlaneGeometry(1.8, 0.32),
     new THREE.MeshBasicMaterial({ map: lettering(plan.name, '#3e5962'), transparent: true }),

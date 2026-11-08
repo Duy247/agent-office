@@ -32,6 +32,15 @@ export function openbotConnector(options: Record<string, unknown>): OfficeConnec
               if (!Array.isArray(roster)) throw new Error('Invalid roster');
               office.roster(roster);
               office.layout(await read('/v1/sidebar-layout'));
+              if (host.support.capabilities.includes('channel-chats-v1')) {
+                try {
+                  const channels = await read('/v1/channels');
+                  if (Array.isArray(channels)) office.channels(channels);
+                } catch (e) {
+                  if (e instanceof Error && /HTTP (403|404)/.test(e.message)) office.channels([]);
+                  else throw e;
+                }
+              } else office.channels([]);
               await saveAppearance({ characters: config.characters, deskSlots: config.deskSlots });
               for (const a of roster) {
                 if (!alive) break;
@@ -88,7 +97,8 @@ export function openbotConnector(options: Record<string, unknown>): OfficeConnec
                 if (
                   event.type === 'bots-changed' ||
                   event.type === 'agents-changed' ||
-                  event.type === 'sidebar-layout-changed'
+                  event.type === 'sidebar-layout-changed' ||
+                  event.type === 'channels-changed'
                 )
                   void refresh().catch(() => ws?.close());
                 office.event(event);

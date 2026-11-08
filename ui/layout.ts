@@ -1,11 +1,16 @@
 import type { OfficeAgent, OfficeSnapshot } from '../src/shared.ts';
+import { addCampusActivities } from '../office/activities.ts';
+import type { ConferenceLayout } from '../office/activities.ts';
 
 export interface FloorPoint {
   x: number;
   z: number;
 }
 export interface RoomPlan {
-  kind?: 'boss';
+  kind?: 'boss' | 'circulation';
+  conference?: ConferenceLayout;
+  park?: { minZ: number; maxZ: number };
+  links?: { from: FloorPoint; to: FloorPoint }[];
   id: string;
   name: string;
   agents: OfficeAgent[];
@@ -30,7 +35,9 @@ export function gridCell(index: number): { x: number; z: number } {
     offset = slot - ring * ring;
   return offset < ring ? { x: ring, z: offset } : { x: offset - ring, z: ring };
 }
-export function planRooms(snapshot: Pick<OfficeSnapshot, 'agents' | 'groups'>): RoomPlan[] {
+export function planRooms(
+  snapshot: Pick<OfficeSnapshot, 'agents' | 'groups'> & Partial<Pick<OfficeSnapshot, 'channels'>>,
+): RoomPlan[] {
   const groups = [...snapshot.groups];
   if (snapshot.agents.some((a) => a.groupId === 'unassigned'))
     groups.push({ id: 'unassigned', name: 'Shared studio' });
@@ -84,6 +91,7 @@ export function planRooms(snapshot: Pick<OfficeSnapshot, 'agents' | 'groups'>): 
       seats,
     };
   });
+  for (const room of rooms) addCampusActivities(room, snapshot.channels);
   let rowZ = 0;
   for (let row = 0; row < rooms.length; row += 2) {
     const pair = rooms.slice(row, row + 2);

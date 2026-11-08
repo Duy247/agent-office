@@ -22,6 +22,8 @@ Browser checks cover the built office, custom code-created asset, local GLB load
 
 ## Performance validation
 
+The park/channel update passed all 61 Windows tests with the live HTTP suite enabled, plus type, format, build and documentation checks. Browser fixtures verified park visits, walking, unique conference seats, the channel-name screen, return after completion, and pause/stale behavior. Authenticated read-only discovery against installed Openbot 0.65.0 confirmed channel-chats-v1 and channel-attention-v1 and a successful channel-summary read. No channels were configured during that check; meeting activity was demonstrated with synthetic data, without creating work or channels in Openbot.
+
 The optimization pass added regression coverage for static batching, rigid character joints, mirrored geometry, material groups, compiled model scale, adaptive resolution and compressed HTTP delivery. Windows live validation passed all 53 tests, type checking and production build. Browser tests covered 3 and 50 working agents, retained geometry, paused rendering, visibility suspension/resume, and production scene/selection/live updates through an explicitly configured HTTPS proxy. See [measured results](docs/PERFORMANCE.md). Installation-specific screenshots and benchmark scratch files remain local.
 
 ## Initial template local run

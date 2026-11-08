@@ -23,16 +23,17 @@ export function createActivityBubble() {
   return bubble;
 }
 
-export function setActivityBubble(bubble: THREE.Sprite, text: string | null) {
+export function setActivityBubble(bubble: THREE.Sprite, text: string | null, ambient = false) {
   bubble.visible = text !== null;
-  if (text === null || bubble.userData.text === text) return;
+  const key = text + '|' + ambient;
+  if (text === null || bubble.userData.key === key) return;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   ctx.font = '500 36px "Segoe UI", sans-serif';
   canvas.width = Math.ceil(Math.max(240, ctx.measureText(text).width + 64));
   canvas.height = 122;
-  ctx.fillStyle = '#fffdf6';
-  ctx.strokeStyle = '#78978b';
+  ctx.fillStyle = ambient ? '#f1f5e9' : '#fffdf6';
+  ctx.strokeStyle = ambient ? '#91aa7f' : '#78978b';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.roundRect(3, 3, canvas.width - 6, 94, 22);
@@ -59,4 +60,5 @@ export function setActivityBubble(bubble: THREE.Sprite, text: string | null) {
   const width = Math.min(3.1, Math.max(1.35, canvas.width / 190));
   bubble.scale.set(width, (width * canvas.height) / canvas.width, 1);
   bubble.userData.text = text;
+  bubble.userData.key = key;
 }

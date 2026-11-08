@@ -43,6 +43,8 @@ Credentials are stored per `profile`; the default Windows profile retains compat
 
 The adapter negotiates capabilities, reads roster/groups, requests runtime snapshots without conversation subscriptions, reconciles queues/side tasks and reconnects. Missing/expired authentication or an unavailable source remains stale; it does not silently switch to demo.
 
+When supported, it also reads channel summaries through GET /v1/channels and observes channels-changed events. Only channel ID, name, visible member IDs and active-work state are exported; preview text, instructions, messages and execution thread IDs are discarded. This drives [conference meetings](ACTIVITIES.md) without reading transcripts or writing channel commands. Channel capability absence or a forbidden/missing optional summary endpoint leaves the normal agent feed working.
+
 ## JSON file
 
 ```json
@@ -52,6 +54,8 @@ The adapter negotiates capabilities, reads roster/groups, requests runtime snaps
 Another local program can write a normalized status file. The sample shows the schema. The connector reads it once per second, preserves the last state if the file is missing/malformed, and exposes only allowed fields. Use atomic file replacement to avoid partial reads. Paths are relative to the project root unless absolute. The example has a deliberately static timestamp; your writer should update timestamps when state changes.
 
 Required: `agents` and `groups` arrays. Agent fields: `id`, `name`, `title`, `provider`, `model`, `groupId`, `deskIndex`, `character`, `state`, `queueCount`, `activity`, `updatedAt`. States: idle, working, queued, question, approval, takeover, failed, unknown. Use a stable deskIndex and agent ID; never turn disconnected/unknown work into idle.
+
+Optional `channels` entries have `{id, name, agentIds: string[], active: boolean}`. Only known agents and channels with at least two visible members survive the browser boundary. Set active from actual channel work, not from unrelated agent activity or conversation text.
 
 ## Write your own adapter
 

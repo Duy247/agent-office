@@ -132,3 +132,5 @@ Custom walls/furniture may require custom walking paths. Define `route({agent, p
 Run `npm run package` to export a clean source template. Export excludes local settings, credentials, connection proof and personal screenshots.
 
 See [performance and static batching](PERFORMANCE.md) before animating individual pieces of the supplied room/workstation presets. Their default batching can be disabled with `{ batch: false }`; async visual changes can call `ctx.invalidate?.()` to redraw a paused scene.
+
+See [roaming, parks and conference meetings](ACTIVITIES.md) for the default movement rules, activity anchors and channel screen. Custom routes receive `desk`, `lounge`, `leisure` or `meeting` as their destination kind. The built-in grid covers known campus furniture; add obstacles or supply your own route when replacing that furniture.

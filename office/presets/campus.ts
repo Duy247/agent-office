@@ -250,10 +250,10 @@ function cafe(parent: THREE.Group, x: number, z: number, model: Model) {
   mesh(parent, new THREE.SphereGeometry(0.08, 12, 8), '#95af61', x + 1.16, 1.22, z + 0.05);
 }
 function meetingPod(parent: THREE.Group, plan: RoomPlan, model: Model) {
-  const x = plan.minX + 2.35,
-    z = plan.minZ + 1.7,
-    w = 3.55,
-    d = 2.65;
+  const x = plan.conference?.x ?? plan.minX + 2.35,
+    z = plan.conference?.z ?? plan.minZ + 1.7,
+    w = plan.conference?.width ?? 3.55,
+    d = plan.conference?.depth ?? 2.65;
   block(parent, w, 0.035, d, x, 0.055, z, '#a8bcb3');
   for (const xx of [x - w / 2, x + w / 2]) {
     glass(parent, 0.035, 2.35, d, xx, 1.25, z);
@@ -262,7 +262,10 @@ function meetingPod(parent: THREE.Group, plan: RoomPlan, model: Model) {
     block(parent, 0.055, 0.045, d, xx, 2.52, z, '#667c7d');
   }
   glass(parent, w, 2.35, 0.035, x, 1.25, z - d / 2);
-  glass(parent, w, 2.35, 0.035, x, 1.25, z + d / 2);
+  // Open doorway: agents can actually pass through the front glazing.
+  const panel = (w - 1.1) / 2;
+  for (const side of [-1, 1])
+    glass(parent, panel, 2.35, 0.035, x + side * (0.55 + panel / 2), 1.25, z + d / 2);
   for (const zz of [z - d / 2, z + d / 2]) {
     block(parent, w, 0.045, 0.055, x, 2.52, zz, '#667c7d');
     block(parent, w, 0.09, 0.025, x, 1.12, zz, '#d8e8e0');
@@ -272,19 +275,17 @@ function meetingPod(parent: THREE.Group, plan: RoomPlan, model: Model) {
     block(parent, 0.025, 2.22, 0.04, xx, 1.22, z + d / 2 + 0.03, '#8ba3a0');
   block(parent, 0.035, 0.33, 0.035, x + 0.32, 1.14, z + d / 2 + 0.09, '#687e7b');
   cylinder(parent, 0.1, 0.66, x, 0.42, z, '#657d79');
-  cylinder(parent, 0.83, 0.075, x, 0.79, z, '#e3d1b4');
-  for (const [dx, dz, rot] of [
-    [0, 0.9, 0],
-    [0, -0.9, Math.PI],
-    [1.05, 0, Math.PI / 2],
-    [-1.05, 0, -Math.PI / 2],
-  ]) {
-    const chair = model(parent, 'chairDesk', x + dx, z + dz, 0.04, rot);
-    chair.scale.setScalar(0.67);
+  block(parent, 1.15, 0.075, Math.max(1.2, d - 1.45), x, 0.79, z, '#e3d1b4');
+  const seats = plan.conference?.seats ?? [
+    { x: x - 1.05, z, facing: Math.PI / 2 },
+    { x: x + 1.05, z, facing: -Math.PI / 2 },
+  ];
+  for (const seat of seats) {
+    const chair = model(parent, 'chairDesk', seat.x, seat.z, 0, seat.facing + Math.PI);
     recolor(chair, 'carpet', '#5b8a92');
   }
-  block(parent, 1.15, 0.64, 0.045, x, 1.75, z - d / 2 + 0.07, '#344d58');
-  block(parent, 1.04, 0.53, 0.02, x, 1.75, z - d / 2 + 0.1, '#a0c6c7');
+  block(parent, 1.9, 0.94, 0.045, x, 1.85, z - d / 2 + 0.07, '#344d58');
+  block(parent, 1.8, 0.84, 0.02, x, 1.85, z - d / 2 + 0.1, '#a0c6c7');
   for (let i = 0; i < 4; i++)
     block(
       parent,
