@@ -27,3 +27,9 @@ On Windows, all 37 tests passed with the live HTTP suite enabled; type checking 
 The editor preview was checked on 127.0.0.1:5173: changing office/office.ts automatically reloaded the scene, a local GLB returned HTTP 200, and the from-scratch room replaced the campus without changing the connector. The development API returned 403 for a foreign Origin and 405 for POST. Browser page errors were empty. A final archive audit confirmed local configuration, DPAPI files, private connection evidence, screenshots and installation-specific agent IDs were absent.
 
 macOS/Linux credential backends and the three-platform GitHub workflow remain unexecuted locally. The demo/JSON adapters and their normalized contracts do not require OS credential access.
+
+## GitHub CI
+
+The [initial GitHub Actions run](https://github.com/Duy247/agent-office/actions/runs/42447845420) passed on Ubuntu, Windows, and macOS with Node 24. Each runner installed locked dependencies, checked formatting and documentation links, checked types, ran the unit suite, built the application, and packaged the source template. The Ubuntu job also uploaded the clean template artifact.
+
+Each CI run passed 36 tests and skipped the optional live HTTP test. The separate Windows live run passed all 37 tests. This validates cross-platform installation/build/test behavior; native macOS/Linux keychain sign-in still needs a live platform-specific check.
