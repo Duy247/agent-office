@@ -62,6 +62,49 @@ test('appearance is isolated even when servers have identical agent IDs', () => 
   assert.equal(saved.serverAppearance.second.characters.shared, 7);
   assert.deepEqual(serverConfig(config(), 'second').characters, {});
 });
+test('per-server boss and logo overrides stay isolated during connection and feed updates', async () => {
+  const settings = {
+    ...config(),
+    boss: { name: 'First owner', gender: 'female' },
+    logo: { url: '/assets/first.svg' },
+  };
+  Object.assign(settings.servers[0], {
+    boss: { name: 'Second owner', gender: 'male' },
+    logo: null,
+  });
+  assert.equal(serverConfig(settings, 'default').boss.name, 'First owner');
+  assert.equal(serverConfig(settings, 'second').boss.name, 'Second owner');
+  assert.equal(serverConfig(settings, 'second').logo, undefined);
+  const pool = new OfficeFeeds(
+    settings,
+    () => ({
+      async start(ctx) {
+        ctx.emit(
+          publicSnapshot({
+            connection: 'connected',
+            config: { boss: { name: 'Adapter owner', gender: 'female' } },
+          }),
+        );
+      },
+    }),
+    async () => {},
+  );
+  try {
+    const initial = JSON.parse(pool.snapshot('second')!);
+    assert.deepEqual(initial.config.boss, { name: 'Second owner', gender: 'male' });
+    pool.subscribe('default', () => {});
+    await delay(0);
+    const first = JSON.parse(pool.snapshot('default')!),
+      second = JSON.parse(pool.snapshot('second')!);
+    assert.deepEqual(first.config.boss, { name: 'First owner', gender: 'female' });
+    assert.deepEqual(second.config.boss, { name: 'Second owner', gender: 'male' });
+    assert.equal(first.config.logo.url, '/assets/first.svg');
+    assert.equal(second.config.logo, undefined);
+  } finally {
+    pool.close();
+  }
+});
+
 test('viewers share one feed per server while different servers never mix snapshots or credentials', async () => {
   const contexts = new Map<string, ConnectorContext>();
   const saves: any[] = [];

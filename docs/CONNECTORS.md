@@ -69,13 +69,17 @@ You can also edit `office.config.local.json` directly if the profiles are alread
       "options": {
         "baseUrl": "https://team.example.com",
         "profile": "second-office"
-      }
+      },
+      "boss": { "name": "Office owner", "gender": "male" },
+      "logo": null
     }
   ]
 }
 ```
 
 This is a partial local override; keep existing connector and office settings. Up to 15 additional servers are supported. IDs must be unique, and `default` identifies the existing connection. Each additional server has separate character and desk assignments in the ignored `serverAppearance` settings, so identical agent IDs cannot share appearances across servers. Existing default assignments remain compatible.
+
+An additional server can override `boss` and `logo`. Omit either field to inherit the default office setting. Set `boss.enabled` to `false` to hide that server's boss, or set `logo` to `null` to remove inherited branding. Reconnecting with `--save-server` preserves these overrides.
 
 The browser receives only server IDs and display names from `GET /api/servers`. State and event requests select a configured ID with `?server=second`; arbitrary addresses and credentials are not accepted from the browser. Feed connections are shared between viewers of the same server and stop 30 seconds after their last viewer leaves. Source credentials remain in protected OS storage. All dashboard endpoints remain GET-only.
 

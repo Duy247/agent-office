@@ -1,6 +1,7 @@
 import type { OfficeSnapshot, OfficeServer } from './shared.ts';
 import type { OfficeConnector } from './connectors/types.ts';
-import { publicSnapshot } from './boundary.ts';
+import { publicLogo, publicSnapshot } from './boundary.ts';
+import { resolveBoss } from './config.ts';
 import { profileName } from './session-store.ts';
 import { teamEndpoint } from './protocol.ts';
 
@@ -68,6 +69,9 @@ export function publicServers(definitions: ServerDefinition[]): OfficeServer[] {
 export function serverConfig(config: any, id: string) {
   const copy = structuredClone(config);
   if (id !== 'default') {
+    const server = copy.servers?.find((s: any) => s.id === id);
+    if (server && Object.hasOwn(server, 'boss')) copy.boss = resolveBoss(server.boss);
+    if (server && Object.hasOwn(server, 'logo')) copy.logo = publicLogo(server.logo);
     copy.characters = copy.serverAppearance?.[id]?.characters ?? {};
     copy.deskSlots = copy.serverAppearance?.[id]?.deskSlots ?? {};
   }
@@ -112,7 +116,7 @@ export class OfficeFeeds {
       const snapshot = publicSnapshot({
         connection: 'connecting',
         message: 'Connecting to ' + definition.name,
-        config: this.config,
+        config: serverConfig(this.config, id),
       });
       feed = { snapshot, wire: JSON.stringify(snapshot), listeners: new Set(), generation: 0 };
       this.feeds.set(id, feed);
@@ -121,11 +125,12 @@ export class OfficeFeeds {
       const current = feed;
       const controller = (current.controller = new AbortController());
       const generation = ++current.generation;
+      const settings = serverConfig(this.config, id);
       const publish = (value: OfficeSnapshot) => {
         if (controller.signal.aborted || generation !== current.generation) return;
         current.snapshot = publicSnapshot({
           ...value,
-          config: { ...value.config, logo: this.config.logo, boss: this.config.boss },
+          config: { ...value.config, logo: settings.logo, boss: settings.boss },
         });
         const wire = JSON.stringify(current.snapshot);
         if (wire === current.wire) return;
@@ -142,7 +147,7 @@ export class OfficeFeeds {
           if (controller.signal.aborted) return;
           return this.factory(definition.type, definition.options).start({
             signal: controller.signal,
-            config: serverConfig(this.config, id),
+            config: settings,
             emit: publish,
             saveAppearance: async (patch) => {
               if (controller.signal.aborted || generation !== current.generation) return;

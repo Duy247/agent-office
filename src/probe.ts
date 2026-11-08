@@ -25,8 +25,9 @@ if (process.argv.includes('--save-server')) {
   const servers = [
     ...(saved.servers ?? []).filter((s: any) => s.id !== id),
     {
+      ...(saved.servers ?? []).find((s: any) => s.id === id),
       id,
-      name: cliValue('--name') ?? id,
+      name: cliValue('--name') ?? (saved.servers ?? []).find((s: any) => s.id === id)?.name ?? id,
       options: defaultOptions,
     },
   ];
