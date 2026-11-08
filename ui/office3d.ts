@@ -16,6 +16,7 @@ import type {
 } from '../office/sdk.ts';
 import { Assets } from '../office/assets.ts';
 import { lettering } from '../office/text.ts';
+import { createActivityBubble, setActivityBubble, workingBubbleText } from './activity-bubble.ts';
 import { MODEL_SCALE } from '../office/constants.ts';
 export {
   MODEL_SCALE,
@@ -63,6 +64,7 @@ type Actor = {
   indicator: THREE.Mesh;
   badge: THREE.Sprite;
   label: THREE.Sprite;
+  bubble: THREE.Sprite;
   ring: THREE.Mesh;
   screen?: THREE.MeshStandardMaterial;
   path: THREE.Vector3[];
@@ -408,6 +410,8 @@ export function createOffice3D(
         const name = label(a.name, 1.4);
         name.position.set(0, 2.0, 0);
         person.root.add(name);
+        const bubble = createActivityBubble();
+        person.root.add(bubble);
         const indicator = new THREE.Mesh(
           new THREE.SphereGeometry(0.065, 10, 8),
           new THREE.MeshBasicMaterial({ color: colors[a.state] }),
@@ -433,6 +437,7 @@ export function createOffice3D(
           indicator,
           badge,
           label: name,
+          bubble,
           ring,
           screen: station.screen,
           path: [],
@@ -481,6 +486,7 @@ export function createOffice3D(
       const actor = actors.get(a.id);
       if (!actor) continue;
       actor.agent = a;
+      setActivityBubble(actor.bubble, workingBubbleText(a, snapshot.connection));
       (actor.indicator.material as THREE.MeshBasicMaterial).color.set(colors[a.state]);
       actor.ring.visible = a.id === selected;
       const text =

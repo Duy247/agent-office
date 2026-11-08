@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Head-level activity bubbles for live working agents; hidden for all other states and stale connections.
 - Optional exact HTTPS reverse-proxy origin while retaining loopback binding and read-only routes.
 - Minimal executive suite, configurable local boss profile, distinct tailored character models, and occasional visual-only terrace walks.
 - Configurable wall logos from local SVG, ICO, PNG, JPEG and WebP files, with proportional fitting and room-local placement controls.
