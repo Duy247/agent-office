@@ -1,0 +1,86 @@
+# Connect a source
+
+The renderer does not speak Openbot's wire protocol. Node-side connectors emit the shared `OfficeSnapshot` shape from `src/shared.ts`; `src/boundary.ts` strips every extra field before browser delivery. Connectors have no browser-visible authentication endpoint and must not emit secrets, chat text or raw source payloads.
+
+Select an adapter in **office.config.local.json**. Shared defaults in office.config.json start with demo. Local overrides are ignored by Git and excluded from the source export.
+
+## Demo
+
+```json
+{ "connector": { "type": "demo" } }
+```
+
+Runs without accounts, Openbot or AI providers. Activity is simulated, the toolbar explicitly says Demo, and no AI calls are made. `npm run demo -- --port 4320` runs an independent demo using a different port.
+
+## Openbot
+
+```json
+{
+  "connector": {
+    "type": "openbot",
+    "options": {
+      "baseUrl": "http://127.0.0.1:9000",
+      "profile": "work-server",
+      "accountApiUrl": "https://api.openbot.run"
+    }
+  }
+}
+```
+
+Replace the example port with the actual Team API address from your Openbot installation. Run:
+
+```sh
+npm run connect -- --server http://127.0.0.1:9000 --profile work-server
+```
+
+Enter your account email and emailed code in the terminal. The supported account-to-Team-API flow creates this dashboard's separate session and closes the temporary account session. After successful sign-in, the command selects Openbot in the ignored local configuration. Your account must already belong to that server. Restart the connector to apply changes.
+
+On Windows, omit baseUrl to rediscover the local Openbot process's port after restarts. With an explicit baseUrl, any OS can connect to that address. HTTP is permitted only on loopback; remote servers require HTTPS. The saved server identity/fingerprint is checked before authenticated requests. Use distinct credential profiles for different servers. `accountApiUrl` may target another supported account service; default is Openbot's official service. The account/ticket endpoints must match the released Openbot protocol, not an arbitrary provider API.
+
+Windows sessions use CurrentUser DPAPI outside the project. macOS uses the OS keychain through the optional `@napi-rs/keyring` package. Linux requires a working unlocked Secret Service store; it is explicitly selected, without kernel/plaintext fallback. If protected storage is unavailable, sign-in fails; no tokens are written into this project, environment files or browser storage. macOS/Linux paths are implemented but were not exercised on those systems during this Windows build.
+
+Credentials are stored per `profile`; the default Windows profile retains compatibility with existing OpenbotOfficeDashboard/session.dpapi. Revoke the corresponding session in Openbot to invalidate access, and remove the saved dashboard credential when retiring a profile. A source token's permissions come from Openbot; the adapter additionally enforces a local read-only endpoint allowlist. Authentication and subscription setup are the only setup writes. Task listing is an Openbot read endpoint that uses POST.
+
+The adapter negotiates capabilities, reads roster/groups, requests runtime snapshots without conversation subscriptions, reconciles queues/side tasks and reconnects. Missing/expired authentication or an unavailable source remains stale; it does not silently switch to demo.
+
+## JSON file
+
+```json
+{ "connector": { "type": "json-file", "options": { "path": "examples/status.json" } } }
+```
+
+Another local program can write a normalized status file. The sample shows the schema. The connector reads it once per second, preserves the last state if the file is missing/malformed, and exposes only allowed fields. Use atomic file replacement to avoid partial reads. Paths are relative to the project root unless absolute. The example has a deliberately static timestamp; your writer should update timestamps when state changes.
+
+Required: `agents` and `groups` arrays. Agent fields: `id`, `name`, `title`, `provider`, `model`, `groupId`, `deskIndex`, `character`, `state`, `queueCount`, `activity`, `updatedAt`. States: idle, working, queued, question, approval, takeover, failed, unknown. Use a stable deskIndex and agent ID; never turn disconnected/unknown work into idle.
+
+## Write your own adapter
+
+Create `src/connectors/my-system.ts`:
+
+```ts
+import type { OfficeConnector } from './types.ts';
+import { publicSnapshot } from '../boundary.ts';
+
+export function myConnector(options: Record<string, unknown>): OfficeConnector {
+  return {
+    async start({ signal, emit }) {
+      // Authenticate separately using your source's supported client flow.
+      // Poll or subscribe; keep credentials and raw source payloads inside this module.
+      emit(
+        publicSnapshot({
+          source: { id: 'my-system', label: 'My system', mode: 'live' },
+          connection: 'connected',
+          updatedAt: new Date().toISOString(),
+          groups: [{ id: 'team', name: 'My team' }],
+          agents: [],
+        }),
+      );
+      // Await your read-only subscription, honor signal, and release resources on abort.
+    },
+  };
+}
+```
+
+Register the factory in `src/connectors/index.ts`, then set `connector.type` to your registration key. The scene and server do not need changing. The interface is `start({signal, config, emit, saveAppearance})`. It should remain active until aborted and clean up sockets/timers. Emit disconnected snapshots preserving known agents when the source goes offline. Namespace IDs when bridging different systems. `saveAppearance` can persist generated character/desk assignments to the ignored local config. Register adapters only from trusted local code; they execute in Node with your account's filesystem/network access.
+
+The server binds to 127.0.0.1, rejects foreign Host/Origin and non-GET requests, then broadcasts filtered state and SSE. The development preview proxies only those same GET APIs and also rejects foreign origins. Nothing in this interface submits work, approves actions or exposes provider controls.

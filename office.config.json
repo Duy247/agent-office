@@ -1,0 +1,13 @@
+{
+  "title": "Agent Office",
+  "port": 4318,
+  "connector": {
+    "type": "demo",
+    "options": {}
+  },
+  "characters": {},
+  "groups": {},
+  "desks": {},
+  "reducedMotion": false,
+  "deskSlots": {}
+}

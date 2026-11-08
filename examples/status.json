@@ -1,0 +1,27 @@
+{
+  "connection": "connected",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "message": "Local sample feed",
+  "groups": [
+    {
+      "id": "sample-team",
+      "name": "My team"
+    }
+  ],
+  "agents": [
+    {
+      "id": "sample-worker",
+      "name": "Sample agent",
+      "title": "Builder",
+      "provider": "Your provider",
+      "model": "Your model",
+      "groupId": "sample-team",
+      "deskIndex": 0,
+      "character": 4,
+      "state": "working",
+      "queueCount": 0,
+      "activity": "Working",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    }
+  ]
+}

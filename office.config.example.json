@@ -1,0 +1,17 @@
+{
+  "title": "Agent Office",
+  "port": 4318,
+  "connector": {
+    "type": "openbot",
+    "options": {
+      "baseUrl": "http://127.0.0.1:9000",
+      "profile": "my-server",
+      "accountApiUrl": "https://api.openbot.run"
+    }
+  },
+  "characters": {},
+  "groups": {},
+  "desks": {},
+  "reducedMotion": false,
+  "deskSlots": {}
+}
