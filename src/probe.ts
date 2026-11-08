@@ -103,7 +103,16 @@ async function request(
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  if (!response.ok) throw new Error(`Team API ${path} returned HTTP ${response.status}.`);
+  if (!response.ok) {
+    // Show only known fixed catalog messages, never arbitrary response bodies or credentials.
+    let hint = '';
+    if (path === '/v1/auth/account') {
+      const detail = await response.json().catch(() => null);
+      if (detail?.error === 'This OpenBot account is not a member of the team.')
+        hint = ' This OpenBot account is not a member of the team.';
+    }
+    throw new Error(`Team API ${path} returned HTTP ${response.status}.${hint}`);
+  }
   return response.json();
 }
 async function discover(

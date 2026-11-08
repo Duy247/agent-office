@@ -196,6 +196,34 @@ test('simultaneous servers keep negotiated protocol and authentication isolated'
   }
 });
 
+test('account sign-in errors show only a fixed membership hint and never raw response details', async () => {
+  let known = true;
+  const server = createServer((_req, res) => {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        error: known ? 'This OpenBot account is not a member of the team.' : 'PRIVATE ERROR',
+        sessionToken: 'PRIVATE TOKEN',
+      }),
+    );
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  try {
+    await assert.rejects(
+      () => request(base, '/v1/auth/account', undefined, { accountTicket: 'test-ticket' }, true),
+      (e: Error) => e.message.includes('not a member') && !e.message.includes('PRIVATE'),
+    );
+    known = false;
+    await assert.rejects(
+      () => request(base, '/v1/auth/account', undefined, { accountTicket: 'test-ticket' }, true),
+      (e: Error) => e.message.endsWith('HTTP 400.') && !e.message.includes('PRIVATE'),
+    );
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('JSON file feed preserves known state after malformed input and cancels cleanly', async () => {
   const root = await mkdtemp(join(tmpdir(), 'agent-office-feed-')),
     path = join(root, 'status.json');

@@ -49,6 +49,8 @@ When supported, it also reads channel summaries through GET /v1/channels and obs
 
 The sidebar's Server menu lists locally configured connections. Each browser chooses its own server; the selection stays in its page URL across refreshes. Switching clears agent selection and the scene before subscribing to the selected server. It does not follow Openbot's desktop server menu or change any Openbot setting.
 
+Known limitation in Openbot 0.65.0: the owner account of an additional server created inside the desktop app can receive HTTP 400, "This OpenBot account is not a member of the team", from local `/v1/auth/account`, even while the Members screen correctly shows Owner. These child servers retain an internal password owner, which their account-directory synchronization deliberately preserves. The current connector uses local HTTP account authentication; it does not yet implement Openbot's remote-session/WebRTC connection flow. Repeating email sign-in does not resolve this case. The primary-server connection and separately authenticated compatible servers remain usable. No internal owner secret is read as a workaround.
+
 Keep the current connection as the default. To connect and register an additional server, run this locally with its actual Team API address:
 
 ```sh
