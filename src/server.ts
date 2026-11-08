@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { readSettings, updateLocalConfig, projectRoot } from './config.ts';
 import { publicSnapshot } from './boundary.ts';
 import { createConnector } from './connectors/index.ts';
+import { allowsOfficeRequest } from './access.ts';
 const config = await readSettings(),
   root = projectRoot;
 const port =
@@ -28,10 +29,7 @@ function publish() {
 const app = express();
 app.disable('x-powered-by');
 app.use((req, res, next) => {
-  if (
-    req.headers.host !== `127.0.0.1:${port}` ||
-    (req.headers.origin && req.headers.origin !== `http://127.0.0.1:${port}`)
-  )
+  if (!allowsOfficeRequest(req.headers.host, req.headers.origin, port, config.publicOrigin))
     return void res.status(403).end();
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');

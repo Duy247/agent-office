@@ -11,7 +11,7 @@ Agent Office is a local dashboard. Its shipped connectors observe state; they do
 - Model resources load from local `/assets/` paths. External model resources are rejected.
 - Office design code and custom connectors are trusted local code. They are not sandboxed.
 
-Do not expose the server or development preview directly to a network. A reverse proxy, remote authentication layer, and multi-user hosting are outside the current design.
+The server and development preview bind to loopback. The production server optionally accepts one explicitly configured HTTPS reverse-proxy origin through `publicOrigin`; TLS, routing and access control belong to that proxy. There is no dashboard login, so a public proxy exposes the filtered office data and branding to anyone who can reach it. Do not expose the development preview. Remote authentication and multi-user hosting are not implemented.
 
 ## Reporting
 

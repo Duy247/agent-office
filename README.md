@@ -48,6 +48,10 @@ Open **http://127.0.0.1:4318**. A fresh copy uses explicitly labelled **demo** a
 
 Windows shortcuts: Start office.cmd starts a background server and opens the browser; Stop office.cmd stops that background server. Edit office.cmd starts the connector and editing preview. Terminal commands work across platforms; Windows shortcuts are optional conveniences.
 
+## Optional HTTPS reverse proxy
+
+For an optional HTTPS reverse proxy, set `publicOrigin` in `office.config.local.json` to its exact origin, for example `https://office.example.com:10000`. The server still binds to `127.0.0.1` and only accepts the configured hostname and matching browser origin, plus normal loopback access. Configure TLS and routing in your proxy separately. This makes the read-only office, agent names/status and local branding available to whoever can reach that proxy; there is no dashboard login. Omit `publicOrigin` for the default local-only setup.
+
 ## Build your own office
 
 1. Keep the connector running.
