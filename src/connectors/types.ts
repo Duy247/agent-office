@@ -10,6 +10,10 @@ export interface ConnectorContext {
 }
 /** A connector observes a source and emits only normalized identity/status data. */
 export interface OfficeConnector {
+  avatar?: (
+    id: string,
+    version: string,
+  ) => Promise<import('../avatars.ts').AvatarImage | undefined>;
   start: (context: ConnectorContext) => Promise<void>;
 }
 export type ConnectorFactory = (options: Record<string, unknown>) => OfficeConnector;

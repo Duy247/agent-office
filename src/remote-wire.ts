@@ -85,15 +85,15 @@ export function signalAddress(value: unknown) {
 
 /** Ordered, bounded reassembly of the public OBW2 data-channel envelope. */
 export class RemoteFrames {
-  private messages = new Map<number, { bytes: Buffer; offset: number; at: number }>();
-  push(data: string | Buffer, now = Date.now()): string | undefined {
+  private messages = new Map<number, { bytes: Buffer; offset: number; at: number; type: number }>();
+  push(data: string | Buffer, now = Date.now()): string | Buffer | undefined {
     if (typeof data === 'string') {
       if (Buffer.byteLength(data) > 2 * 1024 * 1024) throw new Error('Remote frame too large.');
       return data;
     }
     for (const [id, message] of this.messages)
       if (now - message.at > 30_000) this.messages.delete(id);
-    if (data.length < 17 || data.readUInt32BE(0) !== 0x4f425732 || data[16] !== 1)
+    if (data.length < 17 || data.readUInt32BE(0) !== 0x4f425732 || ![1, 2].includes(data[16]))
       throw new Error('Invalid remote text frame.');
     const id = data.readUInt32BE(4),
       size = data.readUInt32BE(8),
@@ -112,16 +112,23 @@ export class RemoteFrames {
           8 * 1024 * 1024
       )
         throw new Error('Remote assembly limit exceeded.');
-      this.messages.set(id, { bytes: Buffer.alloc(size), offset: 0, at: now });
+      this.messages.set(id, { bytes: Buffer.alloc(size), offset: 0, at: now, type: data[16] });
     }
     const message = this.messages.get(id);
-    if (!message || message.offset !== offset || message.bytes.length !== size)
+    if (
+      !message ||
+      message.offset !== offset ||
+      message.bytes.length !== size ||
+      message.type !== data[16]
+    )
       throw new Error('Remote frame sequence is invalid.');
     data.copy(message.bytes, offset, 17);
     message.offset += data.length - 17;
     message.at = now;
     if (message.offset !== size) return;
     this.messages.delete(id);
-    return new TextDecoder('utf-8', { fatal: true }).decode(message.bytes);
+    return message.type === 2
+      ? message.bytes
+      : new TextDecoder('utf-8', { fatal: true }).decode(message.bytes);
   }
 }

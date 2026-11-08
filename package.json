@@ -46,6 +46,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@norbert_bodziony/bloub": "^0.6.4",
+    "@solidjs/web": "2.0.0-rc.21",
     "express": "^5.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

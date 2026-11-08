@@ -1,6 +1,7 @@
 export type OfficeState =
   'idle' | 'working' | 'queued' | 'question' | 'approval' | 'takeover' | 'failed' | 'unknown';
 export interface OfficeAgent {
+  avatar?: OfficeAvatar;
   id: string;
   name: string;
   title: string;
@@ -14,6 +15,12 @@ export interface OfficeAgent {
   updatedAt: string | null;
   character: number;
   desk?: { x: number; y: number };
+}
+export interface OfficeAvatar {
+  seed: string;
+  hue: number | null;
+  color?: string;
+  version?: string;
 }
 export interface OfficeServer {
   id: string;

@@ -1,4 +1,5 @@
 import type { OfficeLogo, OfficeSnapshot, OfficeState } from './shared.ts';
+import { publicAvatar } from './avatar-metadata.ts';
 /** Branding is a local image, never a remote tracking URL or executable document. */
 export function publicLogo(raw: any): OfficeLogo | undefined {
   if (
@@ -51,6 +52,7 @@ export function publicSnapshot(raw: any): OfficeSnapshot {
       groupId: groups.some((g: any) => g.id === a.groupId) ? a.groupId : 'unassigned',
       deskIndex: Math.max(0, Math.floor(number(a.deskIndex))),
       character: Math.max(0, Math.floor(number(a.character))) % 8,
+      ...(publicAvatar(a.avatar) ? { avatar: publicAvatar(a.avatar) } : {}),
       state: states.has(a.state) ? a.state : 'unknown',
       queueCount: Math.max(0, Math.floor(number(a.queueCount))),
       activity: clean(a.activity),

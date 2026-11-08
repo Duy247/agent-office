@@ -148,3 +148,11 @@ export function myConnector(options: Record<string, unknown>): OfficeConnector {
 Register the factory in `src/connectors/index.ts`, then set `connector.type` to your registration key. The scene and server do not need changing. The interface is `start({signal, config, emit, saveAppearance})`. It should remain active until aborted and clean up sockets/timers. Emit disconnected snapshots preserving known agents when the source goes offline. Namespace IDs when bridging different systems. `saveAppearance` can persist generated character/desk assignments to the ignored local config. Register adapters only from trusted local code; they execute in Node with your account's filesystem/network access.
 
 The server binds to 127.0.0.1, rejects foreign Host/Origin and non-GET requests, then broadcasts filtered state and SSE. The development preview proxies only those same GET APIs and also rejects foreign origins. Nothing in this interface submits work, approves actions or exposes provider controls.
+
+### Agent avatars
+
+The Openbot connector reads avatar metadata from the roster and fetches uploaded images through the authenticated, read-only Team API. This works with local and remote server connections. The browser receives a local image URL; credentials and raw Openbot URLs stay in the connector.
+
+Without an uploaded image, the sidebar renders a still Bloub portrait using the same seed, shape, color and expression mapping as Openbot. These still portraits use the flat renderer rather than Openbot�s animated plush material. Connectors without avatar metadata retain the 3D character portrait. Avatar updates invalidate the image identity, and caches stay separate for each server.
+
+Remote file transfer is restricted to explicitly requested avatar images, with size, MIME type and checksum validation. General file downloads are not exposed.

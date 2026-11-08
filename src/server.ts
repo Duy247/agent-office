@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Response } from 'express';
 import { join } from 'node:path';
+import { brotliCompressSync, constants } from 'node:zlib';
 import { readSettings, updateLocalConfig, projectRoot } from './config.ts';
 import { OfficeFeeds, publicServers } from './office-servers.ts';
 import { createConnector } from './connectors/index.ts';
@@ -59,6 +60,41 @@ app.get('/api/events', (req, res) => {
     clients.delete(res);
     unsubscribe?.();
   });
+});
+const compressedAvatars = new WeakMap<Buffer, Buffer>();
+app.get('/api/avatar', async (req, res) => {
+  const { server = 'default', agent, v } = req.query;
+  if (
+    typeof server !== 'string' ||
+    typeof agent !== 'string' ||
+    typeof v !== 'string' ||
+    v.length > 512
+  )
+    return void res.status(400).end();
+  try {
+    const image = await feeds.avatar(server, agent, v);
+    if (!image) return void res.status(404).end();
+    res.setHeader('Content-Type', image.mimeType);
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+    );
+    res.setHeader('Vary', 'Accept-Encoding');
+    if (image.mimeType === 'image/svg+xml' && /\bbr\b/.test(req.headers['accept-encoding'] ?? '')) {
+      let compressed = compressedAvatars.get(image.bytes);
+      if (!compressed) {
+        compressed = brotliCompressSync(image.bytes, {
+          params: { [constants.BROTLI_PARAM_QUALITY]: 4 },
+        });
+        compressedAvatars.set(image.bytes, compressed);
+      }
+      res.setHeader('Content-Encoding', 'br');
+      res.send(compressed);
+    } else res.send(image.bytes);
+  } catch {
+    res.status(503).end();
+  }
 });
 app.use(precompressedAssets(join(root, 'dist')));
 app.use(

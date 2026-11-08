@@ -74,6 +74,11 @@ export function allowedRequest(method: string, path: string, authenticating = fa
   )
     return true;
   if (method === 'GET' && /^\/v1\/agents\/[a-zA-Z0-9_-]{1,128}\/queue$/.test(path)) return true;
+  if (
+    method === 'GET' &&
+    /^\/v1\/agents\/[A-Za-z0-9_-]{1,128}\/avatar\?v=[A-Za-z0-9_-]{1,128}$/.test(path)
+  )
+    return true;
   // Openbot documents task listing as a POST read, not a task mutation.
   if (method === 'POST' && path === '/v1/agent-tasks/list') return true;
   return (

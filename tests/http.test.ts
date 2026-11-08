@@ -34,6 +34,7 @@ test(
       'activity',
       'updatedAt',
       'character',
+      'avatar',
       'desk',
     ];
     for (const agent of state.agents)

@@ -4,6 +4,8 @@ import { publicLogo, publicSnapshot } from './boundary.ts';
 import { resolveBoss } from './config.ts';
 import { profileName } from './session-store.ts';
 import { teamEndpoint } from './protocol.ts';
+import { avatarKey } from './avatar-metadata.ts';
+import { renderAvatar, validAvatarImage, type AvatarImage } from './avatars.ts';
 
 export interface ServerDefinition extends OfficeServer {
   type: string;
@@ -90,12 +92,14 @@ export class OfficeFeeds {
       controller?: AbortController;
       timer?: ReturnType<typeof setTimeout>;
       generation: number;
+      connector?: OfficeConnector;
     }
   >();
   private config: any;
   private factory: (type: string, options: Record<string, unknown>) => OfficeConnector;
   private save: (patch: any) => Promise<void>;
   private idleMs: number;
+  private avatarCache = new Map<string, Promise<AvatarImage>>();
   constructor(
     config: any,
     factory: (type: string, options: Record<string, unknown>) => OfficeConnector,
@@ -145,7 +149,8 @@ export class OfficeFeeds {
       void Promise.resolve()
         .then(() => {
           if (controller.signal.aborted) return;
-          return this.factory(definition.type, definition.options).start({
+          current.connector = this.factory(definition.type, definition.options);
+          return current.connector.start({
             signal: controller.signal,
             config: settings,
             emit: publish,
@@ -190,6 +195,36 @@ export class OfficeFeeds {
   snapshot(id: string) {
     return this.feed(id)?.wire;
   }
+  async avatar(id: string, agentId: string, revision: string) {
+    const feed = this.feeds.get(id);
+    const avatar = feed?.snapshot.agents.find((a) => a.id === agentId)?.avatar;
+    if (!feed || !avatar || avatarKey(avatar) !== revision) return;
+    const key = JSON.stringify([id, agentId, revision]);
+    let result = this.avatarCache.get(key);
+    if (!result) {
+      result = (async () => {
+        if (avatar.version) {
+          try {
+            const image = await feed.connector?.avatar?.(agentId, avatar.version);
+            if (image && validAvatarImage(image)) return image;
+          } catch {
+            /* Use the generated identity when the image cannot be fetched. */
+          }
+        }
+        const generated = await renderAvatar(avatar);
+        if (avatar.version) {
+          const retry = setTimeout(() => this.avatarCache.delete(key), 15_000);
+          retry.unref();
+        }
+        return generated;
+      })();
+      this.avatarCache.set(key, result);
+      if (this.avatarCache.size > 64)
+        this.avatarCache.delete(this.avatarCache.keys().next().value!);
+      void result.catch(() => this.avatarCache.delete(key));
+    }
+    return result;
+  }
   subscribe(id: string, listener: (wire: string) => void) {
     const feed = this.feed(id);
     if (!feed) return;
@@ -207,5 +242,6 @@ export class OfficeFeeds {
       feed.controller?.abort();
     }
     this.feeds.clear();
+    this.avatarCache.clear();
   }
 }

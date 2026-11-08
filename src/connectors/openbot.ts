@@ -4,18 +4,63 @@ import { loadSession, discover, request } from '../probe.ts';
 import { capabilities, sessionExpired } from '../protocol.ts';
 import { OfficeStore } from '../state.ts';
 import type { OfficeConnector } from './types.ts';
+import { avatarPathPattern, validAvatarImage } from '../avatars.ts';
 export function openbotConnector(options: Record<string, unknown>): OfficeConnector {
+  let current: { base: string; token: string; protocol: number } | undefined;
+  let delegate: OfficeConnector | undefined;
   return {
+    async avatar(id, version) {
+      if (delegate) return delegate.avatar?.(id, version);
+      if (!current) return;
+      const path = `/v1/agents/${encodeURIComponent(id)}/avatar?v=${encodeURIComponent(version)}`;
+      if (!avatarPathPattern.test(path)) return;
+      const response = await fetch(current.base + path, {
+        redirect: 'error',
+        signal: AbortSignal.timeout(10_000),
+        headers: {
+          Authorization: 'Bearer ' + current.token,
+          'OpenBot-Protocol-Version': String(current.protocol),
+          'OpenBot-App-Version': '0.1.0',
+          'OpenBot-Capabilities': capabilities.join(','),
+        },
+      });
+      if (!response.ok || Number(response.headers.get('content-length') ?? 0) > 2 * 1024 * 1024)
+        return;
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      const parts: Uint8Array[] = [];
+      let size = 0;
+      try {
+        for (;;) {
+          const part = await reader.read();
+          if (part.done) break;
+          size += part.value.length;
+          if (size > 2 * 1024 * 1024) return;
+          parts.push(part.value);
+        }
+      } finally {
+        await reader.cancel().catch(() => {});
+      }
+      const image = {
+        bytes: Buffer.concat(parts),
+        mimeType: response.headers.get('content-type')?.split(';')[0] ?? '',
+      };
+      return validAvatarImage(image) ? image : undefined;
+    },
     async start({ signal, config, emit, saveAppearance }) {
       if (options.transport === 'remote') {
         const { remoteConnector } = await import('./openbot-remote.ts');
-        return remoteConnector(options).start({ signal, config, emit, saveAppearance });
+        delegate = remoteConnector(options);
+        return delegate.start({ signal, config, emit, saveAppearance });
       }
       const office = new OfficeStore(config);
       let ws: WebSocket | undefined;
       const publish = () =>
         emit({ ...office.snapshot(), source: { id: 'openbot', label: 'Openbot', mode: 'live' } });
-      const stop = () => ws?.terminate();
+      const stop = () => {
+        current = undefined;
+        ws?.terminate();
+      };
       signal.addEventListener('abort', stop, { once: true });
       let retry = 1000;
       while (!signal.aborted) {
@@ -23,6 +68,7 @@ export function openbotConnector(options: Record<string, unknown>): OfficeConnec
           const session = await loadSession(options);
           if (sessionExpired(session.sessionExpiresAt)) throw new Error('sign-in-required');
           const host = await discover(session, options);
+          current = { base: host.base, token: session.sessionToken, protocol: host.protocol };
           if (signal.aborted) break;
           const read = (path: string, body?: unknown) =>
             request(host.base, path, session.sessionToken, body, false, host.protocol);
@@ -117,6 +163,7 @@ export function openbotConnector(options: Record<string, unknown>): OfficeConnec
             });
             ws.on('error', () => {});
             ws.on('close', () => {
+              current = undefined;
               alive = false;
               clearInterval(timer);
               resolve();
@@ -125,6 +172,7 @@ export function openbotConnector(options: Record<string, unknown>): OfficeConnec
           office.connection('disconnected', 'Openbot disconnected · last known state');
           publish();
         } catch (e) {
+          current = undefined;
           const needsLogin = e instanceof Error && /session|sign-in|HTTP 401/.test(e.message);
           const incompatibility =
             e instanceof Error &&

@@ -1,5 +1,7 @@
 import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
+import { AvatarDownloads } from './avatar-downloads.ts';
+import { avatarPathPattern, imageMimes, type AvatarImage } from './avatars.ts';
 import WebSocket from 'ws';
 import { RTCPeerConnection, type RTCDataChannel } from 'werift';
 import {
@@ -30,9 +32,12 @@ export class RemotePeer extends EventEmitter {
       resolve: (value: any) => void;
       reject: (error: Error) => void;
       timer: ReturnType<typeof setTimeout>;
+      asset?: boolean;
     }
   >();
   private proof?: RemoteProof;
+  private downloads = new AvatarDownloads();
+  private avatarReads = 0;
   private hostNonce?: string;
   private authenticated = false;
   private stopped = false;
@@ -188,11 +193,20 @@ export class RemotePeer extends EventEmitter {
                 };
                 channel.onclose = () => this.fail('Remote data channel closed.');
                 channel.onerror = () => this.fail('Remote data channel failed.');
-                if (kind !== 'rpc' && kind !== 'events') continue;
+                if (kind === 'desktop') continue;
                 channel.onmessage = ({ data }) => {
                   try {
                     const text = decoder.push(typeof data === 'string' ? data : Buffer.from(data));
-                    if (text !== undefined) this.receive(kind, JSON.parse(text));
+                    if (text === undefined) return;
+                    if (kind === 'files') {
+                      if (!this.authenticated) throw new Error('Unauthenticated avatar transfer.');
+                      this.downloads.receive(text, this.avatarReads > 0, (frame) =>
+                        this.send('files', frame),
+                      );
+                    } else {
+                      if (typeof text !== 'string') throw new Error('Unexpected binary RPC.');
+                      this.receive(kind, JSON.parse(text));
+                    }
                   } catch {
                     this.fail('Remote protocol validation failed.');
                   }
@@ -302,9 +316,23 @@ export class RemotePeer extends EventEmitter {
         pending.reject(
           new Error(`Remote Team API returned HTTP ${Number(frame.error.status) || 500}.`),
         );
-      else if (frame.result?.status >= 200 && frame.result.status < 300)
-        pending.resolve(frame.result.body);
-      else
+      else if (frame.result?.status >= 200 && frame.result.status < 300) {
+        if (pending.asset) {
+          const file = frame.result.file;
+          if (
+            !file ||
+            typeof file.transferId !== 'string' ||
+            !/^[A-Za-z0-9_-]{1,128}$/.test(file.transferId) ||
+            !Number.isSafeInteger(file.size) ||
+            file.size < 1 ||
+            !imageMimes.includes(file.mimeType) ||
+            file.size > 2 * 1024 * 1024
+          )
+            pending.reject(new Error('Invalid avatar response.'));
+          else void this.downloads.wait(file.transferId).then(pending.resolve, pending.reject);
+        } else if (frame.result.file) pending.reject(new Error('Unexpected file response.'));
+        else pending.resolve(frame.result.body);
+      } else
         pending.reject(
           new Error(`Remote Team API returned HTTP ${Number(frame.result?.status) || 500}.`),
         );
@@ -330,7 +358,14 @@ export class RemotePeer extends EventEmitter {
       } else throw new Error('Unexpected remote event control.');
     } else throw new Error('Unexpected remote RPC frame.');
   }
-  request(path: string, body?: unknown): Promise<any> {
+  requestAvatar(path: string): Promise<AvatarImage> {
+    if (!avatarPathPattern.test(path))
+      return Promise.reject(new Error('Avatar path is not permitted.'));
+    if (this.avatarReads >= 4) return Promise.reject(new Error('Avatar download limit exceeded.'));
+    this.avatarReads++;
+    return this.request(path, undefined, true).finally(() => this.avatarReads--);
+  }
+  request(path: string, body?: unknown, asset = false): Promise<any> {
     const payload = remoteReadPayload(path, body);
     if (this.pending.size >= 64) return Promise.reject(new Error('Remote read limit exceeded.'));
     if (!this.authenticated || this.stopped)
@@ -341,7 +376,7 @@ export class RemotePeer extends EventEmitter {
         this.pending.delete(requestId);
         reject(new Error('Remote read timed out.'));
       }, 15_000);
-      this.pending.set(requestId, { resolve, reject, timer });
+      this.pending.set(requestId, { resolve, reject, timer, asset });
       try {
         this.send('rpc', {
           version: 2,
@@ -380,6 +415,7 @@ export class RemotePeer extends EventEmitter {
       pending.reject(new Error('Remote connection closed.'));
     }
     this.pending.clear();
+    this.downloads.clear();
     this.earlyEvents = [];
     this.socket?.terminate();
     void this.pc?.close().catch(() => {});

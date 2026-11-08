@@ -1,4 +1,5 @@
 import type { OfficeAgent, OfficeSnapshot, OfficeState } from './shared.ts';
+import { rosterAvatar } from './avatar-metadata.ts';
 export type { OfficeAgent, OfficeSnapshot, OfficeState } from './shared.ts';
 export const idOf = (v: any) =>
   typeof v?.agentId === 'string' ? v.agentId : typeof v?.botId === 'string' ? v.botId : '';
@@ -100,6 +101,7 @@ export class OfficeStore {
           activity: 'Waiting for state',
           updatedAt: old?.updatedAt ?? null,
           character: this.config.characters[v.id],
+          ...(rosterAvatar(v) ? { avatar: rosterAvatar(v) } : {}),
           ...(this.config.desks?.[v.id] ? { desk: this.config.desks[v.id] } : {}),
         };
       });

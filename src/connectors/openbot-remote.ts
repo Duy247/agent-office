@@ -5,15 +5,21 @@ import { negotiate } from '../protocol.ts';
 import { OfficeStore } from '../state.ts';
 import type { OfficeConnector } from './types.ts';
 import type { RemoteSession } from '../remote-account.ts';
+import { avatarPathPattern } from '../avatars.ts';
 
 export function remoteConnector(options: Record<string, unknown>): OfficeConnector {
+  let peer: RemotePeer | undefined;
   return {
+    async avatar(id, version) {
+      const path = `/v1/agents/${encodeURIComponent(id)}/avatar?v=${encodeURIComponent(version)}`;
+      if (!peer || !avatarPathPattern.test(path)) return;
+      return peer.requestAvatar(path);
+    },
     async start({ signal, config, emit, saveAppearance }) {
       const office = new OfficeStore(config);
       const publish = () =>
         emit({ ...office.snapshot(), source: { id: 'openbot', label: 'Openbot', mode: 'live' } });
-      let peer: RemotePeer | undefined,
-        retry = 1000;
+      let retry = 1000;
       const stop = () => peer?.close();
       signal.addEventListener('abort', stop, { once: true });
       try {

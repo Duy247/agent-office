@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { OfficeSnapshot, OfficeServer } from '../src/shared.ts';
+import type { OfficeAgent, OfficeSnapshot, OfficeServer } from '../src/shared.ts';
 import { characterPortrait } from './characters.ts';
+import { avatarKey } from '../src/avatar-metadata.ts';
 import {
   activityText,
   agentChannels,
@@ -14,22 +15,35 @@ import {
 } from './sidebar-model.ts';
 
 const Avatar = React.memo(function Avatar({
-  character,
+  agent,
+  serverId,
   large = false,
 }: {
-  character: number;
+  agent: OfficeAgent;
+  serverId: string;
   large?: boolean;
 }) {
-  const [image, setImage] = useState('');
+  const [image, setImage] = useState(''),
+    [failed, setFailed] = useState('');
+  const native = agent.avatar
+    ? `/api/avatar?server=${encodeURIComponent(serverId)}&agent=${encodeURIComponent(agent.id)}&v=${encodeURIComponent(avatarKey(agent.avatar))}`
+    : '';
   useEffect(() => {
+    if (native && failed !== native) return;
     try {
-      setImage(characterPortrait(character));
+      setImage(characterPortrait(agent.character));
     } catch {
       setImage('');
     }
-  }, [character]);
-  return image ? (
-    <img className={'portrait' + (large ? ' large' : '')} src={image} alt="" />
+  }, [agent.character, native, failed]);
+  const source = native && failed !== native ? native : image;
+  return source ? (
+    <img
+      className={'portrait' + (large ? ' large' : '')}
+      src={source}
+      alt=""
+      onError={() => setFailed(native)}
+    />
   ) : (
     <span className="portrait" />
   );
@@ -138,14 +152,14 @@ export function Dashboard({
           <nav className="agent-tabs" aria-label="Select agent">
             {state.agents.map((a) => (
               <button key={a.id} aria-pressed={a.id === agent.id} onClick={() => onSelect(a.id)}>
-                <Avatar character={a.character} />
+                <Avatar agent={a} serverId={serverId} />
                 {a.name}
               </button>
             ))}
           </nav>
           <div className="inspector">
             <div className="profile">
-              <Avatar character={agent.character} large />
+              <Avatar agent={agent} serverId={serverId} large />
               <div>
                 <strong className="agent-name">{agent.name}</strong>
                 <p className="role">{agent.title || 'Openbot agent'}</p>
@@ -225,7 +239,7 @@ export function Dashboard({
                 onClick={() => onSelect(a.id)}
               >
                 <div className="identity">
-                  <Avatar character={a.character} />
+                  <Avatar agent={a} serverId={serverId} />
                   <div className="identity-text">
                     <strong>{a.name}</strong>
                     <span title={a.title}>{a.title || 'Openbot agent'}</span>
