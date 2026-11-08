@@ -16,3 +16,4 @@ release/
 .DS_Store
 Thumbs.db
 coverage/
+/public/assets/local/

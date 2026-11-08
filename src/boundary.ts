@@ -1,4 +1,24 @@
-import type { OfficeSnapshot, OfficeState } from './shared.ts';
+import type { OfficeLogo, OfficeSnapshot, OfficeState } from './shared.ts';
+/** Branding is a local image, never a remote tracking URL or executable document. */
+export function publicLogo(raw: any): OfficeLogo | undefined {
+  if (
+    typeof raw?.url !== 'string' ||
+    !/^\/assets\/[a-zA-Z0-9_\-/]+\.(svg|ico|png|webp|jpe?g)$/i.test(raw.url)
+  )
+    return;
+  if (raw.url.includes('//')) return;
+  const logo: OfficeLogo = { url: raw.url };
+  for (const key of ['width', 'height'] as const)
+    if (Number.isFinite(raw[key]) && raw[key] > 0 && raw[key] <= 20) logo[key] = raw[key];
+  for (const key of ['position', 'rotation'] as const)
+    if (
+      Array.isArray(raw[key]) &&
+      raw[key].length === 3 &&
+      raw[key].every((v: unknown) => typeof v === 'number' && Number.isFinite(v))
+    )
+      logo[key] = [...raw[key]] as [number, number, number];
+  return logo;
+}
 const states = new Set<OfficeState>([
   'idle',
   'working',
@@ -67,6 +87,7 @@ export function publicSnapshot(raw: any): OfficeSnapshot {
     config: {
       title: clean(raw?.config?.title),
       reducedMotion: raw?.config?.reducedMotion === true,
+      ...(publicLogo(raw?.config?.logo) ? { logo: publicLogo(raw.config.logo) } : {}),
     },
     ...(raw?.source
       ? {

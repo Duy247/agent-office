@@ -74,7 +74,7 @@ void connector
     signal: controller.signal,
     config,
     emit(value) {
-      snapshot = publicSnapshot(value);
+      snapshot = publicSnapshot({ ...value, config: { ...value.config, logo: config.logo } });
       publish();
     },
     saveAppearance: (patch) => updateLocalConfig(patch),

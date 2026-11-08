@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Configurable wall logos from local SVG, ICO, PNG, JPEG and WebP files, with proportional fitting and room-local placement controls.
+- Private logo assets stay outside Git and source exports.
+
 ## 0.1.0 — 2026-11-08
 
 Initial preview of the programmable 3D office template.

@@ -463,6 +463,7 @@ export function createOffice3D(
     if (!snapshot || !ready || disposed) return;
     const next = JSON.stringify([
       snapshot.groups,
+      snapshot.config.logo,
       snapshot.agents.map((a) => [a.id, a.name, a.character, a.groupId, a.deskIndex, a.desk]),
     ]);
     if (next !== signature) {

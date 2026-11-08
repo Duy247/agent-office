@@ -71,6 +71,22 @@ Register procedural Three.js assets or local GLB/glTF/OBJ models in that same fi
 
 See [the authoring guide](docs/AUTHORING.md) for custom assets, groups, room layout, lights, animation, walking routes and model import details.
 
+### Wall logo
+
+Put your SVG, ICO, PNG, JPEG or WebP logo in `public/assets/local/` (create the folder), then add this to `office.config.local.json`:
+
+```json
+{
+  "logo": {
+    "url": "/assets/local/logo.svg",
+    "width": 3.2,
+    "height": 1.05
+  }
+}
+```
+
+Run `npm start` again and refresh the office. Each room gets a wall plaque with the image's original proportions. `width` and `height` set the plaque size in metres; optional `position: [x, y, z]` and `rotation: [x, y, z]` (degrees) override placement within each room. Code authors can call `placeWallLogo(ctx, options)` from `office/logo.ts` in their own room designs. Missing images hide the plaque. Local logos and settings are excluded from Git and source exports. For a redistributable logo you own, use `public/assets/custom/` instead. Remote image URLs are not loaded; download your image locally first.
+
 ## Connect Nightly Openbot
 
 Adapters are selected in **office.config.local.json**, which is ignored by Git and excluded from source exports:

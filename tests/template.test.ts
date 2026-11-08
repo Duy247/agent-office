@@ -17,7 +17,9 @@ test('shareable template includes code and models but excludes local identities,
     assert.ok(files[path], path);
   assert.equal(
     names.some((n) =>
-      /\.local\.|\.dpapi|connection-proof|^office-.*\.png|node_modules|release\//.test(n),
+      /\.local\.|\.dpapi|connection-proof|^office-.*\.png|node_modules|release\/|^public\/assets\/local\//.test(
+        n,
+      ),
     ),
     false,
   );

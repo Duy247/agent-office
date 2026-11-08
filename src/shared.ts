@@ -24,5 +24,12 @@ export interface OfficeSnapshot {
   agents: OfficeAgent[];
   groups: { id: string; name: string }[];
   recent: { at: string; agentId: string; kind: string }[];
-  config: { title: string; reducedMotion: boolean };
+  config: { title: string; reducedMotion: boolean; logo?: OfficeLogo };
+}
+export interface OfficeLogo {
+  url: string;
+  width?: number;
+  height?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
 }

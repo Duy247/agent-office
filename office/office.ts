@@ -4,6 +4,7 @@ import { autoLayout, defineAsset, defineOffice } from './sdk.ts';
 import { buildCampusRoom } from './presets/room.ts';
 import { buildWorkstation } from './presets/workstation.ts';
 import { createSculpture } from './assets/sculpture.ts';
+import { placeWallLogo } from './logo.ts';
 import { createTree, createPlanter, createArcade, createTableTennis } from './presets/campus.ts';
 
 export default defineOffice({
@@ -29,6 +30,7 @@ export default defineOffice({
   },
   buildRoom(ctx) {
     buildCampusRoom(ctx); // Delete this call and build your entire room with ctx.box/group/place.
+    placeWallLogo(ctx);
     ctx.place('my-sculpture', 'sculpture', {
       position: [ctx.plan.minX + 4.7, 0, ctx.plan.amenityZ + 1.5],
       rotation: [0, 30, 0], // DEGREES. X=left/right, Y=height, Z=front/back; units are metres.
